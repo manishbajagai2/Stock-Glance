@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/wakeServer";
+
 export type SearchResult = {
   name: string;
   symbol: string;
@@ -223,7 +225,9 @@ export async function searchCompanies(
   q: string,
   signal?: AbortSignal
 ): Promise<{ results: SearchResult[]; error?: string }> {
-  const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal });
+  const res = await apiFetch(`/api/search?q=${encodeURIComponent(q)}`, {
+    signal,
+  });
   return res.json();
 }
 
@@ -232,7 +236,7 @@ export async function fetchCompany(
   symbol: string
 ): Promise<{ status: number; data: CompanyData }> {
   const params = new URLSearchParams({ path, symbol });
-  const res = await fetch(`/api/company?${params}`);
+  const res = await apiFetch(`/api/company?${params}`);
   const data = (await res.json()) as CompanyData;
   return { status: res.status, data };
 }
@@ -240,7 +244,9 @@ export async function fetchCompany(
 export async function fetchOhlc(
   symbol: string
 ): Promise<{ bars: OhlcBar[]; error?: string }> {
-  const res = await fetch(`/api/ohlc?symbol=${encodeURIComponent(symbol)}`);
+  const res = await apiFetch(
+    `/api/ohlc?symbol=${encodeURIComponent(symbol)}`
+  );
   return res.json();
 }
 
@@ -250,16 +256,14 @@ export async function fetchNews(
 ): Promise<{ items: ScoredNewsItem[]; error?: string }> {
   const params = new URLSearchParams({ symbol });
   if (name) params.set("name", name);
-  const res = await fetch(`/api/news?${params}`);
+  const res = await apiFetch(`/api/news?${params}`);
   return res.json();
 }
 
-export async function fetchMacro(
-  sector?: string
-): Promise<MacroBundle> {
+export async function fetchMacro(sector?: string): Promise<MacroBundle> {
   const params = new URLSearchParams();
   if (sector) params.set("sector", sector);
-  const res = await fetch(`/api/macro?${params}`);
+  const res = await apiFetch(`/api/macro?${params}`);
   return res.json();
 }
 

@@ -1,11 +1,12 @@
-# Render Blueprint — one web service for API + frontend
-# Dashboard: https://dashboard.render.com/select-repo?type=blueprint
+# Render Blueprint — one web service for API + frontend (free tier sleeps when idle)
+# https://dashboard.render.com/select-repo?type=blueprint
 services:
   - type: web
     name: stock-glance
     runtime: node
     plan: free
     region: singapore
+    autoDeploy: true
     buildCommand: npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/health

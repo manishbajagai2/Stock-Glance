@@ -1,4 +1,5 @@
 import type { CompanyData, DecisionPayload } from "@/lib/api";
+import { apiFetch } from "@/lib/wakeServer";
 
 export type DeskRunSaveResult = {
   ok: boolean;
@@ -145,7 +146,7 @@ export async function saveDeskRun(
 ): Promise<DeskRunSaveResult> {
   try {
     const payload = buildDeskRunPayload(decision, data, companyPath);
-    const res = await fetch("/api/desk-runs", {
+    const res = await apiFetch("/api/desk-runs", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -165,7 +166,7 @@ export async function fetchPersistStatus(): Promise<{
   url: string | null;
 }> {
   try {
-    const res = await fetch("/api/persist/status");
+    const res = await apiFetch("/api/persist/status");
     return res.json();
   } catch {
     return { configured: false, url: null };

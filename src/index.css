@@ -249,9 +249,28 @@
     .viz-step-dot,
     .enter-fade,
     .enter-fade-delay-1,
-    .enter-fade-delay-2 {
+    .enter-fade-delay-2,
+    .wake-dots {
       animation: none !important;
       transition: none !important;
     }
+  }
+}
+
+/* Render free-tier wake banner */
+.wake-dots {
+  display: inline-block;
+  width: 1.1em;
+  text-align: left;
+  animation: wake-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes wake-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
   }
 }

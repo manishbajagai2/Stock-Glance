@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { CompanyDetails } from "@/components/CompanyDetails";
 import { HoldingsPage } from "@/components/HoldingsPage";
 import { SearchScreen } from "@/components/SearchScreen";
+import { ServerWakeBanner } from "@/components/ServerWakeBanner";
 import {
   fetchCompany,
   type CompanyData,
@@ -20,6 +21,15 @@ function viewFromPath(pathname: string): View {
   if (isHoldingsPath(pathname)) return "holdings";
   if (parseCompanyRoute(pathname)) return "details";
   return "search";
+}
+
+function Shell({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <ServerWakeBanner />
+      {children}
+    </>
+  );
 }
 
 export default function App() {
@@ -76,7 +86,9 @@ export default function App() {
       if (reqId !== requestIdRef.current || activeKeyRef.current !== key) {
         return;
       }
-      setError("Network error while fetching company.");
+      setError(
+        "Network error while fetching company. The host may still be waking — try again."
+      );
       setLoading(false);
     }
   }, []);
@@ -124,7 +136,6 @@ export default function App() {
     }
   }, []);
 
-  // Open company or holdings from the current URL (refresh / deep link)
   useEffect(() => {
     if (isHoldingsPath(window.location.pathname)) {
       setView("holdings");
@@ -170,24 +181,34 @@ export default function App() {
 
   if (view === "holdings") {
     return (
-      <HoldingsPage onHome={goSearch} onOpenCompany={openCompany} />
+      <Shell>
+        <HoldingsPage onHome={goSearch} onOpenCompany={openCompany} />
+      </Shell>
     );
   }
 
   if (view === "details") {
     return (
-      <CompanyDetails
-        loading={loading}
-        error={error}
-        data={data}
-        loadingName={loadingName}
-        onBack={goSearch}
-        onHoldings={goHoldings}
-      />
+      <Shell>
+        <CompanyDetails
+          loading={loading}
+          error={error}
+          data={data}
+          loadingName={loadingName}
+          onBack={goSearch}
+          onHoldings={goHoldings}
+        />
+      </Shell>
     );
   }
 
   return (
-    <SearchScreen onPick={openCompany} onHoldings={goHoldings} onHome={goSearch} />
+    <Shell>
+      <SearchScreen
+        onPick={openCompany}
+        onHoldings={goHoldings}
+        onHome={goSearch}
+      />
+    </Shell>
   );
 }
