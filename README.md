@@ -80,9 +80,7 @@ Apply via Supabase SQL editor, CLI (`supabase db push`), or MCP `apply_migration
 
 Best fit for this personal app: **one Node service** that builds Vite into `dist/` and serves both `/api/*` and the SPA. Scrapes can take 30–90s, so serverless (Vercel) is a poor fit.
 
-Recommended hosts:
-1. **[Render](https://render.com)** free web service — sleeps when idle; app handles wake UX
-2. **[Railway](https://railway.app)** — paid/hobby, no free-tier sleep
+Host: **[Render](https://render.com)** free web service — sleeps when idle; the app handles wake UX.
 
 ### Env vars on the host
 
@@ -93,9 +91,9 @@ Recommended hosts:
 | `SUPABASE_URL` | runtime | Desk-run persistence |
 | `SUPABASE_ANON_KEY` | runtime | Desk-run persistence |
 | `FIRECRAWL_API_KEY` | runtime | From [firecrawl.dev](https://www.firecrawl.dev) → API Keys |
-| `PORT` | runtime | Set automatically by Railway/Render |
+| `PORT` | runtime | Set automatically by Render |
 
-### Render (recommended for now)
+### Render
 
 1. Open [Render → New Blueprint](https://dashboard.render.com/select-repo?type=blueprint) and connect [`manishbajagai2/Stock-Glance`](https://github.com/manishbajagai2/Stock-Glance) (uses [`render.yaml`](render.yaml)).
 2. Set secrets when prompted:
@@ -105,16 +103,6 @@ Recommended hosts:
 3. Deploy → copy the URL (e.g. `https://stock-glance.onrender.com`).
 4. Supabase **Authentication → URL configuration**: add that origin and `/**`.
 5. Free tier **sleeps after ~15 minutes idle**. The app wakes it on load via `/api/health`, shows a “Waking the desk…” banner if slow, retries API calls once after wake, and keeps a gentle keepalive while the tab is open.
-
-### Railway
-
-1. Push this repo to GitHub (already: `manishbajagai2/Stock-Glance`).
-2. [railway.app/new](https://railway.app/new) → **Deploy from GitHub** → select `Stock-Glance`.
-3. Add the env vars above (Variables tab). Redeploy once so the Vite build sees `VITE_*`.
-4. Generate a public domain (Settings → Networking).
-5. In Supabase **Authentication → URL configuration**, add:  
-   `https://YOUR-RAILWAY-DOMAIN` and `https://YOUR-RAILWAY-DOMAIN/**`  
-   (and the same origins in Google OAuth if required).
 
 Local Docker smoke test:
 
@@ -129,7 +117,7 @@ docker run --rm -p 3456:3456 \
   stock-glance
 ```
 
-Config files: [`Dockerfile`](Dockerfile), [`railway.toml`](railway.toml), [`render.yaml`](render.yaml).
+Config files: [`Dockerfile`](Dockerfile), [`render.yaml`](render.yaml).
 
 | Command | Description |
 | --- | --- |
