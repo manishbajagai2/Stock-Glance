@@ -7,7 +7,8 @@ services:
     plan: free
     region: singapore
     autoDeploy: true
-    buildCommand: npm ci && npm run build
+    # vite lives in devDependencies; Render sets NODE_ENV=production during build
+    buildCommand: npm ci --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
