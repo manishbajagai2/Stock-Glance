@@ -1,5 +1,4 @@
 import type { CompanyData } from "@/lib/api";
-import { getPosition } from "@/lib/portfolio";
 import type { FundamentalBreakdown } from "./fundamentals";
 import type { Horizon, TradeLevels } from "./levels";
 import type { MacroResult } from "./macro";
@@ -64,6 +63,8 @@ export function runAnalystProcess(input: {
   price: number | null;
   macroLoaded: boolean;
   newsLoaded: boolean;
+  /** Logged-in user's holding for this symbol, if any. */
+  holding?: { avgPrice: number; quantity: number } | null;
 }): AnalystProcessResult {
   const steps: ProcessStep[] = [];
   const { sector, fundamentals: f, technical: t, macro, levels, verdict } =
@@ -341,7 +342,7 @@ export function runAnalystProcess(input: {
     );
   }
 
-  const owned = getPosition(input.data.symbol || "");
+  const owned = input.holding ?? null;
   if (!owned) {
     steps.push(
       step({
@@ -350,8 +351,8 @@ export function runAnalystProcess(input: {
         order: 11,
         status: "skip",
         score: null,
-        summary: "No saved holding on this device — skipped",
-        missing: "Enter avg/qty in My Position to include",
+        summary: "No holding in My Holdings — skipped",
+        missing: "Add this stock under My Holdings to include",
       })
     );
   } else if (input.price == null) {

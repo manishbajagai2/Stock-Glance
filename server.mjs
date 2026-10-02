@@ -179,59 +179,6 @@ async function insertDeskRun(payload) {
   return Array.isArray(rows) ? rows[0] : rows;
 }
 
-async function listPositions() {
-  return (
-    (await supabaseRest("positions", {
-      query: "?select=*&order=updated_at.desc",
-    })) || []
-  );
-}
-
-async function upsertPositionRow(pos) {
-  const symbol = String(pos.symbol || "").trim().toUpperCase();
-  if (!symbol) throw Object.assign(new Error("symbol required"), { status: 400 });
-  await upsertCompany({
-    symbol,
-    name: pos.name || symbol,
-    path: pos.path || `/company/${symbol}/consolidated/`,
-    sector: pos.sector || null,
-    industry: pos.industry || null,
-  });
-  const row = {
-    symbol,
-    name: pos.name || symbol,
-    path: pos.path || `/company/${symbol}/consolidated/`,
-    avg_price: Number(pos.avg_price ?? pos.avgPrice),
-    quantity: Number(pos.quantity),
-    max_risk_pct: Number(pos.max_risk_pct ?? pos.maxRiskPct ?? 1),
-    thesis_note: pos.thesis_note ?? pos.thesisNote ?? null,
-    updated_at: new Date().toISOString(),
-  };
-  if (!(row.avg_price > 0) || !(row.quantity > 0)) {
-    throw Object.assign(new Error("avg_price and quantity must be > 0"), {
-      status: 400,
-    });
-  }
-  const rows = await supabaseRest("positions", {
-    method: "POST",
-    body: row,
-    prefer: "resolution=merge-duplicates,return=representation",
-    query: "?on_conflict=symbol",
-  });
-  return Array.isArray(rows) ? rows[0] : rows;
-}
-
-async function deletePositionRow(symbol) {
-  const sym = String(symbol || "").trim().toUpperCase();
-  if (!sym) throw Object.assign(new Error("symbol required"), { status: 400 });
-  await supabaseRest("positions", {
-    method: "DELETE",
-    query: `?symbol=eq.${encodeURIComponent(sym)}`,
-    prefer: "return=minimal",
-  });
-  return { ok: true, symbol: sym };
-}
-
 let nextAllowedAt = 0;
 
 function sendJson(res, status, body) {
@@ -832,14 +779,17 @@ async function firecrawlScrape(url, { jsonQuery } = {}) {
     __dirname,
     `.tmp-scrape-${Date.now()}-${Math.random().toString(16).slice(2)}.json`
   );
+  const localBin = path.join(__dirname, "node_modules", ".bin", "firecrawl");
+  const bin = fs.existsSync(localBin) ? localBin : "firecrawl";
   const args = ["scrape", url, "--only-main-content", "-o", outFile];
   if (jsonQuery) {
     args.push("-Q", jsonQuery);
   }
   try {
-    await execFileAsync("firecrawl", args, {
+    await execFileAsync(bin, args, {
       timeout: 90_000,
       maxBuffer: 8 * 1024 * 1024,
+      env: process.env,
     });
     const raw = fs.readFileSync(outFile, "utf8");
     return parseJsonLoose(raw);
@@ -1613,49 +1563,6 @@ const server = http.createServer(async (req, res) => {
     }
   }
 
-  if (url.pathname === "/api/positions") {
-    if (req.method === "GET") {
-      try {
-        const rows = await listPositions();
-        return sendJson(res, 200, { positions: rows });
-      } catch (err) {
-        console.error("[positions]", err);
-        return sendJson(res, err.status || 500, {
-          error: String(err.message || err),
-          positions: [],
-        });
-      }
-    }
-    if (req.method === "PUT" || req.method === "POST") {
-      try {
-        const body = await readJsonBody(req);
-        if (!body) return sendJson(res, 400, { error: "JSON body required" });
-        const row = await upsertPositionRow(body);
-        return sendJson(res, 200, { ok: true, position: row });
-      } catch (err) {
-        console.error("[positions]", err);
-        return sendJson(res, err.status || 500, {
-          error: String(err.message || err),
-        });
-      }
-    }
-  }
-
-  if (req.method === "DELETE" && url.pathname.startsWith("/api/positions/")) {
-    try {
-      const symbol = decodeURIComponent(
-        url.pathname.slice("/api/positions/".length)
-      );
-      const result = await deletePositionRow(symbol);
-      return sendJson(res, 200, result);
-    } catch (err) {
-      console.error("[positions]", err);
-      return sendJson(res, err.status || 500, {
-        error: String(err.message || err),
-      });
-    }
-  }
-
   if (req.method === "GET") {
     return serveStatic(req, res);
   }
@@ -1664,8 +1571,8 @@ const server = http.createServer(async (req, res) => {
   res.end("Method not allowed");
 });
 
-server.listen(PORT, () => {
-  console.log(`Stock Glance → http://localhost:${PORT}`);
+server.listen(Number(PORT), "0.0.0.0", () => {
+  console.log(`Stock Glance → http://0.0.0.0:${PORT}`);
   if (COOLDOWN_MS > 0) {
     console.log(`Cooldown between company lookups: ${COOLDOWN_MS / 1000}s`);
   } else {

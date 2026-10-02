@@ -69,6 +69,11 @@ export function isSearchPath(pathname: string): boolean {
   return clean === "/" || clean === "";
 }
 
+export function isHoldingsPath(pathname: string): boolean {
+  const clean = pathname.replace(/\/+$/, "") || "/";
+  return clean === "/holdings";
+}
+
 export function parseDeskQuery(search = window.location.search): {
   tab: DeskTab;
   horizon: Horizon;

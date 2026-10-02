@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CompanyDetails } from "@/components/CompanyDetails";
+import { HoldingsPage } from "@/components/HoldingsPage";
 import { SearchScreen } from "@/components/SearchScreen";
 import {
   fetchCompany,
@@ -8,15 +9,22 @@ import {
 } from "@/lib/api";
 import {
   companyHref,
+  isHoldingsPath,
   isSearchPath,
   parseCompanyRoute,
 } from "@/lib/routes";
 
-type View = "search" | "details";
+type View = "search" | "details" | "holdings";
+
+function viewFromPath(pathname: string): View {
+  if (isHoldingsPath(pathname)) return "holdings";
+  if (parseCompanyRoute(pathname)) return "details";
+  return "search";
+}
 
 export default function App() {
   const [view, setView] = useState<View>(() =>
-    parseCompanyRoute(window.location.pathname) ? "details" : "search"
+    viewFromPath(window.location.pathname)
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,8 +110,26 @@ export default function App() {
     }
   }, []);
 
-  // Open company from the current URL (refresh / deep link)
+  const goHoldings = useCallback(() => {
+    activeKeyRef.current = "";
+    requestIdRef.current += 1;
+    setView("holdings");
+    setLoading(false);
+    setError(null);
+    setData(null);
+    setLoadingName("");
+    document.title = "My Holdings · Stock Glance";
+    if (!isHoldingsPath(window.location.pathname)) {
+      window.history.pushState({ view: "holdings" }, "", "/holdings");
+    }
+  }, []);
+
+  // Open company or holdings from the current URL (refresh / deep link)
   useEffect(() => {
+    if (isHoldingsPath(window.location.pathname)) {
+      setView("holdings");
+      return;
+    }
     const route = parseCompanyRoute(window.location.pathname);
     if (!route) return;
     void loadCompany({
@@ -115,28 +141,38 @@ export default function App() {
 
   useEffect(() => {
     const onPopState = () => {
-      const route = parseCompanyRoute(window.location.pathname);
-      if (route) {
-        void loadCompany({
-          name: route.symbol,
-          symbol: route.symbol,
-          path: route.path,
-        });
+      const next = viewFromPath(window.location.pathname);
+      if (next === "details") {
+        const route = parseCompanyRoute(window.location.pathname);
+        if (route) {
+          void loadCompany({
+            name: route.symbol,
+            symbol: route.symbol,
+            path: route.path,
+          });
+        }
         return;
       }
       activeKeyRef.current = "";
       requestIdRef.current += 1;
-      setView("search");
+      setView(next);
       setLoading(false);
       setError(null);
       setData(null);
       setLoadingName("");
-      document.title = "Stock Glance";
+      document.title =
+        next === "holdings" ? "My Holdings · Stock Glance" : "Stock Glance";
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, [loadCompany]);
+
+  if (view === "holdings") {
+    return (
+      <HoldingsPage onHome={goSearch} onOpenCompany={openCompany} />
+    );
+  }
 
   if (view === "details") {
     return (
@@ -146,9 +182,12 @@ export default function App() {
         data={data}
         loadingName={loadingName}
         onBack={goSearch}
+        onHoldings={goHoldings}
       />
     );
   }
 
-  return <SearchScreen onPick={openCompany} />;
+  return (
+    <SearchScreen onPick={openCompany} onHoldings={goHoldings} onHome={goSearch} />
+  );
 }

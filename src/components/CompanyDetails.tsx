@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { AppHeader } from "@/components/AppHeader";
 import { LogoMark } from "@/components/LogoMark";
 import { PriceHero } from "@/components/PriceHero";
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { ForecastPanel } from "@/components/decision/ForecastPanel";
 import { FundamentalsPanel } from "@/components/decision/FundamentalsPanel";
+import { HoldingPanel } from "@/components/decision/HoldingPanel";
 import { MacroPanel } from "@/components/decision/MacroPanel";
 import { NewsPanel } from "@/components/decision/NewsPanel";
-import { PositionPanel } from "@/components/decision/PositionPanel";
 import { ProcessPanel } from "@/components/decision/ProcessPanel";
 import { SourcesDrawer } from "@/components/decision/SourcesDrawer";
 import { TechnicalsPanel } from "@/components/decision/TechnicalsPanel";
@@ -15,6 +15,7 @@ import { VerdictPanel } from "@/components/decision/VerdictPanel";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { useHoldings } from "@/hooks/useHoldings";
 import { buildDecision, type Horizon } from "@/lib/analysis/decision";
 import {
   fetchMacro,
@@ -25,7 +26,6 @@ import {
   type OhlcBar,
   type ScoredNewsItem,
 } from "@/lib/api";
-import { getPosition, hydratePortfolioFromRemote } from "@/lib/portfolio";
 import { saveDeskRun } from "@/lib/persist";
 import {
   parseDeskQuery,
@@ -34,7 +34,7 @@ import {
 } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
-const DESK_TABS = [
+const BASE_TABS = [
   ["verdict", "Verdict"],
   ["forecast", "Forecast"],
   ["process", "Process"],
@@ -42,7 +42,6 @@ const DESK_TABS = [
   ["technicals", "Technicals"],
   ["news", "News"],
   ["macro", "Macro"],
-  ["position", "My Position"],
 ] as const;
 
 type CompanyDetailsProps = {
@@ -51,6 +50,7 @@ type CompanyDetailsProps = {
   data: CompanyData | null;
   loadingName: string;
   onBack: () => void;
+  onHoldings: () => void;
 };
 
 function DetailsSkeleton({ name }: { name: string }) {
@@ -76,6 +76,7 @@ export function CompanyDetails({
   data,
   loadingName,
   onBack,
+  onHoldings,
 }: CompanyDetailsProps) {
   const initial = parseDeskQuery();
   const [tab, setTab] = useState<DeskTab>(initial.tab);
@@ -87,6 +88,14 @@ export function CompanyDetails({
   >(null);
   const [enriching, setEnriching] = useState(false);
   const lastSavedKeyRef = useRef("");
+  const { getBySymbol } = useHoldings();
+  const holding = data?.symbol ? getBySymbol(data.symbol) : null;
+  const showPositionTab = Boolean(holding);
+
+  const deskTabs = useMemo(() => {
+    if (!showPositionTab) return [...BASE_TABS];
+    return [...BASE_TABS, ["position", "My Position"] as const];
+  }, [showPositionTab]);
 
   const headerPrice =
     data?.screener?.snapshot?.current_price ??
@@ -100,14 +109,19 @@ export function CompanyDetails({
       ? window.location.pathname
       : `${window.location.pathname}/`;
 
-  const inPortfolio = Boolean(data?.symbol && getPosition(data.symbol));
-
   useEffect(() => {
     if (!data?.symbol) return;
     const q = parseDeskQuery();
     setTab(q.tab);
     setHorizon(q.horizon);
   }, [data?.symbol]);
+
+  useEffect(() => {
+    if (tab === "position" && !showPositionTab) {
+      setTab("verdict");
+      replaceDeskQuery({ tab: "verdict", horizon });
+    }
+  }, [tab, showPositionTab, horizon]);
 
   useEffect(() => {
     if (!data?.symbol) return;
@@ -147,13 +161,11 @@ export function CompanyDetails({
       macroMarkers,
       newsLoaded: news != null,
       macroLoaded: macroMarkers != null,
+      holding: holding
+        ? { avgPrice: holding.avg_price, quantity: holding.quantity }
+        : null,
     });
-  }, [data, horizon, bars, news, macroMarkers]);
-
-  // Hydrate portfolio from Supabase once per session
-  useEffect(() => {
-    void hydratePortfolioFromRemote();
-  }, []);
+  }, [data, horizon, bars, news, macroMarkers, holding]);
 
   // Persist settled desk runs (forecast + verdict) to Supabase
   useEffect(() => {
@@ -191,9 +203,11 @@ export function CompanyDetails({
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 border-b border-border/80 bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-5xl flex-col gap-2 px-4 py-2.5 sm:px-6">
-          <div className="flex items-center gap-2 sm:gap-3">
+      <AppHeader
+        brand={false}
+        onHoldingsClick={onHoldings}
+        leading={
+          <>
             <Button
               type="button"
               variant="outline"
@@ -210,68 +224,67 @@ export function CompanyDetails({
                 {data.symbol}
               </span>
             ) : null}
-            <div className="ml-auto flex items-center gap-2">
-              {enriching ? (
-                <span className="hidden text-xs text-muted-foreground sm:inline">
-                  Loading OHLC · news · macro…
-                </span>
-              ) : null}
-              {!loading && !error && data ? (
-                <div
-                  role="group"
-                  aria-label="Analysis horizon"
-                  className="hidden grid-cols-2 gap-0.5 rounded-xl border border-border bg-card p-0.5 sm:grid"
-                >
-                  {(
-                    [
-                      ["long", "Long"],
-                      ["swing", "Swing"],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() => onHorizonChange(value)}
-                      className={cn(
-                        "min-h-8 rounded-lg px-2.5 text-xs font-semibold transition-colors",
-                        horizon === value
-                          ? "bg-primary text-primary-foreground"
-                          : "text-muted-foreground hover:text-foreground"
-                      )}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <ThemeSwitcher />
-            </div>
-          </div>
+            {enriching ? (
+              <span className="hidden text-xs text-muted-foreground lg:inline">
+                Loading OHLC · news · macro…
+              </span>
+            ) : null}
+            {!loading && !error && data ? (
+              <div
+                role="group"
+                aria-label="Analysis horizon"
+                className="ml-1 hidden grid-cols-2 gap-0.5 rounded-xl border border-border bg-card p-0.5 sm:grid"
+              >
+                {(
+                  [
+                    ["long", "Long"],
+                    ["swing", "Swing"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => onHorizonChange(value)}
+                    className={cn(
+                      "min-h-8 rounded-lg px-2.5 text-xs font-semibold transition-colors",
+                      horizon === value
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </>
+        }
+      />
 
-          {!loading && !error && data ? (
-            <nav
-              aria-label="Desk sections"
-              className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-0.5 pe-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              {DESK_TABS.map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => onTabChange(value)}
-                  className={cn(
-                    "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-colors sm:text-sm",
-                    tab === value
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </nav>
-          ) : null}
+      {!loading && !error && data ? (
+        <div className="border-b border-border/60 bg-background">
+          <nav
+            aria-label="Desk sections"
+            className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 py-2 pe-8 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {deskTabs.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => onTabChange(value)}
+                className={cn(
+                  "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-colors sm:text-sm",
+                  tab === value
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
         </div>
-      </header>
+      ) : null}
 
       <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-5 sm:px-6 sm:py-8">
         {loading ? <DetailsSkeleton name={loadingName} /> : null}
@@ -321,7 +334,7 @@ export function CompanyDetails({
               price={headerPrice}
               fetchedAt={data.fetchedAt}
               suitability={decision.suitability}
-              inPortfolio={inPortfolio}
+              inPortfolio={showPositionTab}
               provisional={enriching || decision.verdict.provisional}
             />
 
@@ -347,9 +360,15 @@ export function CompanyDetails({
               <TabsContent value="macro" className="outline-none">
                 <MacroPanel decision={decision} />
               </TabsContent>
-              <TabsContent value="position" className="outline-none">
-                <PositionPanel decision={decision} path={companyPath} />
-              </TabsContent>
+              {holding ? (
+                <TabsContent value="position" className="outline-none">
+                  <HoldingPanel
+                    holding={holding}
+                    decision={decision}
+                    onManage={onHoldings}
+                  />
+                </TabsContent>
+              ) : null}
             </Tabs>
 
             <SourcesDrawer data={data} />

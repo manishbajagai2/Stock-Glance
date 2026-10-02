@@ -1,5 +1,4 @@
 import type { CompanyData, DecisionPayload } from "@/lib/api";
-import type { StoredPosition } from "@/lib/portfolio";
 
 export type DeskRunSaveResult = {
   ok: boolean;
@@ -170,76 +169,5 @@ export async function fetchPersistStatus(): Promise<{
     return res.json();
   } catch {
     return { configured: false, url: null };
-  }
-}
-
-export async function fetchRemotePositions(): Promise<StoredPosition[]> {
-  try {
-    const res = await fetch("/api/positions");
-    const body = await res.json();
-    if (!res.ok || !Array.isArray(body.positions)) return [];
-    return body.positions.map(
-      (p: {
-        symbol: string;
-        name: string;
-        path: string;
-        avg_price: number;
-        quantity: number;
-        max_risk_pct?: number;
-        thesis_note?: string | null;
-        updated_at: string;
-      }) => ({
-        symbol: p.symbol,
-        name: p.name,
-        path: p.path,
-        avgPrice: Number(p.avg_price),
-        quantity: Number(p.quantity),
-        maxRiskPct: p.max_risk_pct != null ? Number(p.max_risk_pct) : undefined,
-        thesisNote: p.thesis_note || undefined,
-        updatedAt: p.updated_at,
-      })
-    );
-  } catch {
-    return [];
-  }
-}
-
-export async function syncPositionRemote(
-  pos: StoredPosition
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const res = await fetch("/api/positions", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        symbol: pos.symbol,
-        name: pos.name,
-        path: pos.path,
-        avg_price: pos.avgPrice,
-        quantity: pos.quantity,
-        max_risk_pct: pos.maxRiskPct ?? 1,
-        thesis_note: pos.thesisNote || null,
-      }),
-    });
-    const body = await res.json();
-    if (!res.ok) return { ok: false, error: body.error || res.statusText };
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: String((err as Error)?.message || err) };
-  }
-}
-
-export async function deletePositionRemote(
-  symbol: string
-): Promise<{ ok: boolean; error?: string }> {
-  try {
-    const res = await fetch(`/api/positions/${encodeURIComponent(symbol)}`, {
-      method: "DELETE",
-    });
-    const body = await res.json();
-    if (!res.ok) return { ok: false, error: body.error || res.statusText };
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: String((err as Error)?.message || err) };
   }
 }

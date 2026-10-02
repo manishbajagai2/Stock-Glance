@@ -33,6 +33,8 @@ export function buildDecision(input: {
   macroLoaded?: boolean;
   /** True once news fetch settled (even if empty). */
   newsLoaded?: boolean;
+  /** Optional logged-in holding for process position step. */
+  holding?: { avgPrice: number; quantity: number } | null;
 }): DecisionPayload {
   const { data, horizon } = input;
   const sector = runSectorModel(data);
@@ -113,6 +115,7 @@ export function buildDecision(input: {
     price,
     macroLoaded: input.macroLoaded ?? input.macroMarkers != null,
     newsLoaded: input.newsLoaded ?? input.news != null,
+    holding: input.holding ?? null,
   });
 
   verdict = {

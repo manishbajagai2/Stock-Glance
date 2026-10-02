@@ -39,7 +39,7 @@ export function PriceHero({
           ) : null}
           {inPortfolio ? (
             <Badge variant="outline" className="font-medium text-primary">
-              In portfolio
+              In holdings
             </Badge>
           ) : null}
           {provisional ? (

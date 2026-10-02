@@ -1,0 +1,26 @@
+# Render Blueprint — one web service for API + frontend
+# Dashboard: https://dashboard.render.com/select-repo?type=blueprint
+services:
+  - type: web
+    name: stock-glance
+    runtime: node
+    plan: free
+    region: singapore
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_SUPABASE_URL
+        sync: false
+      - key: VITE_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: FIRECRAWL_API_KEY
+        sync: false
+      - key: COOLDOWN_MS
+        value: "0"
