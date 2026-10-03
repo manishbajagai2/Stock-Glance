@@ -105,6 +105,11 @@ async function upsertCompany(company) {
     path: company.path || prev?.path || null,
     sector: company.sector || prev?.sector || null,
     industry: company.industry || prev?.industry || null,
+    website: company.website || prev?.website || null,
+    logo_url:
+      unwrapLogoUrl(company.logo_url || company.logoUrl) ||
+      prev?.logo_url ||
+      null,
     last_seen_at: new Date().toISOString(),
   };
   const rows = await supabaseRest("companies", {
@@ -132,6 +137,8 @@ async function insertDeskRun(payload) {
     path: company.path || null,
     sector: company.sector || null,
     industry: company.industry || null,
+    website: company.website || null,
+    logo_url: company.logo_url || company.logoUrl || null,
   });
   const row = {
     symbol,
@@ -554,10 +561,192 @@ function parseInsights(md) {
   return [...new Set(insights)].slice(0, 6);
 }
 
+const LOGO_SKIP_HOSTS = new Set([
+  "screener.in",
+  "www.screener.in",
+  "scanx.trade",
+  "www.scanx.trade",
+  "ticker.finology.in",
+  "www.finology.in",
+  "finology.in",
+  "www.nseindia.com",
+  "nseindia.com",
+  "www.bseindia.com",
+  "bseindia.com",
+  "finance.yahoo.com",
+  "www.google.com",
+  "google.com",
+  "twitter.com",
+  "x.com",
+  "facebook.com",
+  "linkedin.com",
+  "youtube.com",
+  "wikipedia.org",
+  "en.wikipedia.org",
+]);
+
+function normalizeWebsite(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  try {
+    const withProto = /^https?:\/\//i.test(s) ? s : `https://${s}`;
+    const u = new URL(withProto);
+    if (!/^https?:$/i.test(u.protocol)) return null;
+    const host = u.hostname.toLowerCase();
+    if (!host || LOGO_SKIP_HOSTS.has(host)) return null;
+    if (host.endsWith(".screener.in")) return null;
+    return `https://${host}`;
+  } catch {
+    return null;
+  }
+}
+
+function logoUrlFromWebsite(website) {
+  const normalized = normalizeWebsite(website);
+  if (!normalized) return null;
+  try {
+    const host = new URL(normalized).hostname.replace(/^www\./, "");
+    // Clearbit tends to look better than tiny favicons when a domain exists.
+    return `https://logo.clearbit.com/${encodeURIComponent(host)}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Screener CDN company marks: ![](https://cdn-media.screener.in/company-logos/...) */
+function extractScreenerLogo(md) {
+  const text = String(md || "").slice(0, 8000);
+  const m = text.match(
+    /https:\/\/cdn-media\.screener\.in\/company-logos\/[^\s)"']+/i
+  );
+  if (!m) return null;
+  // Keep the scraped CDN path (thumbnails are the reliable Screener asset).
+  return m[0];
+}
+
+function extractCompanyWebsite(md) {
+  const text = String(md || "");
+  const labeled = text.match(
+    /(?:^|\n)\s*Website\s*[:\-]?\s*(?:\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s)<]+)|([a-z0-9][-a-z0-9.]*\.[a-z]{2,}(?:\/[^\s)<]*)?))/i
+  );
+  if (labeled) {
+    const candidate = labeled[2] || labeled[3] || labeled[1] || labeled[4];
+    const normalized = normalizeWebsite(candidate);
+    if (normalized) return normalized;
+  }
+
+  const linkRe = /\[([^\]]*)\]\((https?:\/\/[^)\s]+)\)/gi;
+  let m;
+  while ((m = linkRe.exec(text)) !== null) {
+    const label = String(m[1] || "").toLowerCase().trim();
+    const href = m[2];
+    const labelLooksLikeDomain =
+      /^[a-z0-9][-a-z0-9.]*\.[a-z]{2,}$/i.test(label) ||
+      label.startsWith("www.");
+    if (
+      label.includes("website") ||
+      label.includes("official") ||
+      label === "site" ||
+      label.includes("www") ||
+      labelLooksLikeDomain
+    ) {
+      const normalized = normalizeWebsite(href);
+      if (normalized) return normalized;
+    }
+  }
+
+  // Fallback: first external http(s) link in the top of the page that isn't a known data host.
+  const head = text.slice(0, 12000);
+  const bareRe = /https?:\/\/[^\s)<"']+/gi;
+  while ((m = bareRe.exec(head)) !== null) {
+    const normalized = normalizeWebsite(m[0]);
+    if (normalized) return normalized;
+  }
+  return null;
+}
+
+async function loadCachedCompany(symbol) {
+  const sym = String(symbol || "").trim().toUpperCase();
+  if (!sym || !supabaseConfigured()) return null;
+  try {
+    const existing = await supabaseRest("companies", {
+      query: `?symbol=eq.${encodeURIComponent(sym)}&select=*&limit=1`,
+    });
+    return Array.isArray(existing) ? existing[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+const LOGO_PROXY_HOSTS = new Set([
+  "cdn-media.screener.in",
+  "logo.clearbit.com",
+  "www.google.com",
+  "icons.duckduckgo.com",
+]);
+
+function isAllowedLogoUrl(raw) {
+  try {
+    const u = new URL(String(raw || ""));
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    return LOGO_PROXY_HOSTS.has(u.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
+/** Same-origin logo URL so the browser is not blocked by CDN hotlink rules. */
+function proxiedLogoUrl(logoUrl) {
+  if (!logoUrl || !isAllowedLogoUrl(logoUrl)) return logoUrl || null;
+  return `/api/logo?src=${encodeURIComponent(logoUrl)}`;
+}
+
+function unwrapLogoUrl(raw) {
+  const s = String(raw || "").trim();
+  if (!s) return null;
+  if (s.startsWith("/api/logo")) {
+    try {
+      const u = new URL(s, "http://local");
+      const src = u.searchParams.get("src");
+      return isAllowedLogoUrl(src) ? src : null;
+    } catch {
+      return null;
+    }
+  }
+  return isAllowedLogoUrl(s) ? s : s.startsWith("http") ? s : null;
+}
+
+const logoProxyCache = new Map();
+
+async function fetchLogoBytes(src) {
+  const hit = logoProxyCache.get(src);
+  if (hit && Date.now() - hit.at < 1000 * 60 * 60 * 24) return hit;
+  const res = await fetch(src, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (compatible; StockGlance/1.0; +https://stock-glance.onrender.com)",
+      Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+      Referer: "https://www.screener.in/",
+    },
+  });
+  if (!res.ok) throw new Error(`logo fetch HTTP ${res.status}`);
+  const buf = Buffer.from(await res.arrayBuffer());
+  const contentType = res.headers.get("content-type") || "image/webp";
+  const entry = { buf, contentType, at: Date.now() };
+  if (logoProxyCache.size > 200) {
+    const first = logoProxyCache.keys().next().value;
+    if (first) logoProxyCache.delete(first);
+  }
+  logoProxyCache.set(src, entry);
+  return entry;
+}
+
 function parseScreenerMarkdown(md) {
   const sections = extractSections(md);
   const company = parseCompanyName(md);
   const snapshot = parseScreenerSnapshot(md.slice(0, 8000));
+  const website = extractCompanyWebsite(md);
+  const logoUrl = extractScreenerLogo(md);
 
   const plTables = extractAllTables(sections["Profit & Loss"] || "");
   const shareTables = extractAllTables(sections["Shareholding Pattern"] || "");
@@ -589,6 +778,8 @@ function parseScreenerMarkdown(md) {
 
   return {
     company,
+    website,
+    logoUrl,
     snapshot,
     insights: parseInsights(md),
     tables,
@@ -1314,9 +1505,10 @@ async function fetchCompany(pathOrSymbol, symbolHint = "") {
   const company = screener.company || symbol;
   const sym = (symbol || cleaned).toUpperCase();
 
-  const [scanx, finology] = await Promise.all([
+  const [scanx, finology, cached] = await Promise.all([
     fetchScanxBundle(sym, company),
     fetchFinologyBundle(sym),
+    loadCachedCompany(sym),
   ]);
 
   const hasTables = Object.values(screener.tables || {}).some(Boolean);
@@ -1328,12 +1520,38 @@ async function fetchCompany(pathOrSymbol, symbolHint = "") {
     throw new Error("Could not parse Screener company data");
   }
 
+  const website =
+    screener.website ||
+    normalizeWebsite(cached?.website) ||
+    null;
+  const logoUrl =
+    screener.logoUrl ||
+    (cached?.logo_url ? String(cached.logo_url) : null) ||
+    logoUrlFromWebsite(website) ||
+    null;
+
   const sources = ["screener", "scanx"];
   if (!finology?.error) sources.push("finology");
+
+  // Persist website/logo when newly discovered (best-effort; desk-run upsert also writes).
+  // Store the upstream CDN URL, not the same-origin proxy path.
+  if (website || logoUrl) {
+    void upsertCompany({
+      symbol: sym,
+      name: company,
+      path: pagePath,
+      website,
+      logo_url: logoUrl,
+    }).catch((err) => {
+      console.warn("company logo upsert failed:", err?.message || err);
+    });
+  }
 
   return {
     company,
     symbol: sym,
+    website,
+    logoUrl: proxiedLogoUrl(logoUrl),
     screener: {
       snapshot: screener.snapshot,
       tables: screener.tables,
@@ -1397,6 +1615,27 @@ const server = http.createServer(async (req, res) => {
       cooldownMs: COOLDOWN_MS,
       remainingMs: cooldownRemaining(),
     });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/logo") {
+    const src = url.searchParams.get("src") || "";
+    if (!isAllowedLogoUrl(src)) {
+      return sendJson(res, 400, { error: "Unsupported logo source." });
+    }
+    try {
+      const { buf, contentType } = await fetchLogoBytes(src);
+      res.writeHead(200, {
+        "Content-Type": contentType,
+        "Cache-Control": "public, max-age=86400",
+        "Content-Length": buf.length,
+      });
+      res.end(buf);
+    } catch (err) {
+      console.warn("logo proxy failed:", err?.message || err);
+      res.writeHead(404);
+      res.end();
+    }
+    return;
   }
 
   if (req.method === "GET" && url.pathname === "/api/search") {

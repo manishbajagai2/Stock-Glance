@@ -14,8 +14,14 @@ export type TradeLevels = {
   extendedAboveEntry: boolean;
 };
 
+/** Full label for verdict banners and process notes. */
 export function horizonLabel(h: Horizon): string {
-  return h === "swing" ? "Swing (2–3 mo)" : "Long-term";
+  return h === "swing" ? "Swing (2–3 months)" : "Long-term";
+}
+
+/** Compact label for the desk horizon switcher and FitMeter headers. */
+export function horizonSwitchLabel(h: Horizon): string {
+  return h === "swing" ? "Swing 2–3 months" : "Long-term";
 }
 
 export function horizonFromQuery(raw: string | null | undefined): Horizon {

@@ -43,55 +43,58 @@ export default function App() {
   const requestIdRef = useRef(0);
   const activeKeyRef = useRef("");
 
-  const loadCompany = useCallback(async (item: SearchResult) => {
-    const route =
-      parseCompanyRoute(companyHref(item)) ||
-      parseCompanyRoute(
-        `/company/${encodeURIComponent(item.symbol || "")}/consolidated`
-      );
-    if (!route) return;
+  const loadCompany = useCallback(
+    async (item: SearchResult, opts?: { soft?: boolean }) => {
+      const route =
+        parseCompanyRoute(companyHref(item)) ||
+        parseCompanyRoute(
+          `/company/${encodeURIComponent(item.symbol || "")}/consolidated`
+        );
+      if (!route) return;
 
-    const key = route.path;
-    activeKeyRef.current = key;
-    const reqId = ++requestIdRef.current;
+      const key = route.path;
+      activeKeyRef.current = key;
+      const reqId = ++requestIdRef.current;
 
-    setView("details");
-    setLoading(true);
-    setError(null);
-    setData(null);
-    setLoadingName(item.name || item.symbol || route.symbol);
-    document.title = `${item.name || route.symbol} · Stock Glance`;
+      setView("details");
+      setLoading(true);
+      setError(null);
+      if (!opts?.soft) setData(null);
+      setLoadingName(item.name || item.symbol || route.symbol);
+      document.title = `${item.name || route.symbol} · Stock Glance`;
 
-    try {
-      const { status, data: body } = await fetchCompany(
-        route.path,
-        route.symbol
-      );
+      try {
+        const { status, data: body } = await fetchCompany(
+          route.path,
+          route.symbol
+        );
 
-      if (reqId !== requestIdRef.current || activeKeyRef.current !== key) {
-        return;
-      }
+        if (reqId !== requestIdRef.current || activeKeyRef.current !== key) {
+          return;
+        }
 
-      if (status >= 400) {
-        setError(body.error || "Lookup failed.");
+        if (status >= 400) {
+          setError(body.error || "Lookup failed.");
+          setLoading(false);
+          return;
+        }
+
+        setData(body);
         setLoading(false);
-        return;
+        const titleName = body.company || body.symbol || route.symbol;
+        document.title = `${titleName} · Stock Glance`;
+      } catch {
+        if (reqId !== requestIdRef.current || activeKeyRef.current !== key) {
+          return;
+        }
+        setError(
+          "Network error while fetching company. The host may still be waking — try again."
+        );
+        setLoading(false);
       }
-
-      setData(body);
-      setLoading(false);
-      const titleName = body.company || body.symbol || route.symbol;
-      document.title = `${titleName} · Stock Glance`;
-    } catch {
-      if (reqId !== requestIdRef.current || activeKeyRef.current !== key) {
-        return;
-      }
-      setError(
-        "Network error while fetching company. The host may still be waking — try again."
-      );
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   const openCompany = useCallback(
     (item: SearchResult) => {
@@ -197,6 +200,22 @@ export default function App() {
           loadingName={loadingName}
           onBack={goSearch}
           onHoldings={goHoldings}
+          refreshing={loading}
+          onRefresh={() => {
+            const route = parseCompanyRoute(window.location.pathname);
+            const symbol = data?.symbol || route?.symbol;
+            if (!symbol) return;
+            void loadCompany(
+              {
+                name: data?.company || symbol,
+                symbol,
+                path:
+                  route?.path ||
+                  `/company/${encodeURIComponent(symbol)}/consolidated/`,
+              },
+              { soft: true }
+            );
+          }}
         />
       </Shell>
     );

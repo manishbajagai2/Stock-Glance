@@ -1,6 +1,6 @@
 import type { CompanyData } from "@/lib/api";
 import type { FundamentalBreakdown } from "./fundamentals";
-import type { Horizon, TradeLevels } from "./levels";
+import { horizonLabel, type Horizon, type TradeLevels } from "./levels";
 import type { MacroResult } from "./macro";
 import { clamp } from "./parse";
 import type { SectorModelResult } from "./sectorModels";
@@ -416,7 +416,7 @@ export function runAnalystProcess(input: {
           ? `Hard gate: ${verdict.gateTriggered}`
           : `Action ${verdict.label} · composite ${verdict.composite}`,
         evidence: [
-          `Horizon: ${input.horizon === "swing" ? "Swing 2–3 mo" : "Long-term"}`,
+          `Horizon: ${horizonLabel(input.horizon)}`,
           ...verdict.drivers.slice(0, 2),
         ],
       })

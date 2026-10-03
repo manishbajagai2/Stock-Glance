@@ -7,7 +7,6 @@ import {
 } from "lucide-react";
 import {
   ActionGlyph,
-  FitMeter,
   LevelsStrip,
   ScenarioBars,
   ScoreArcRow,
@@ -141,26 +140,13 @@ export function VerdictPanel({ decision }: { decision: DecisionPayload }) {
         />
       </div>
 
-      {/* 3. Fit meters */}
-      <div className="enter-fade-delay-2 flex flex-col gap-2 sm:flex-row">
-        <FitMeter
-          kind="swing"
-          label={decision.suitability.swing.label}
-          score={decision.suitability.swing.score}
-        />
-        <FitMeter
-          kind="long"
-          label={decision.suitability.longTerm.label}
-          score={decision.suitability.longTerm.score}
-        />
-      </div>
       {decision.suitability.comboNote ? (
-        <p className="-mt-4 text-sm font-medium text-foreground/90">
+        <p className="enter-fade-delay-2 text-sm font-medium text-foreground/90">
           {decision.suitability.comboNote}
         </p>
       ) : null}
 
-      {/* 4. Levels strip */}
+      {/* 3. Levels strip */}
       <section className="flex flex-col gap-3 rounded-2xl border border-border bg-card/50 px-4 py-4 sm:px-5">
         <h3 className="text-sm font-semibold tracking-tight">Trade geography</h3>
         <LevelsStrip
@@ -175,7 +161,7 @@ export function VerdictPanel({ decision }: { decision: DecisionPayload }) {
         />
       </section>
 
-      {/* 5. Scenarios */}
+      {/* 4. Scenarios */}
       <section className="flex flex-col gap-2">
         <h3 className="text-sm font-semibold tracking-tight">Scenario skew</h3>
         <ScenarioBars
@@ -187,7 +173,7 @@ export function VerdictPanel({ decision }: { decision: DecisionPayload }) {
         />
       </section>
 
-      {/* 6. Compact why / risks */}
+      {/* 5. Compact why / risks */}
       <div className="grid gap-4 sm:grid-cols-2">
         <CompactList
           title="Why"

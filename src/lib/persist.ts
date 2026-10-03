@@ -83,6 +83,8 @@ export function buildDeskRunPayload(
       path: companyPath,
       sector: decision.sector.sectorLabel || decision.sector.sectorId || null,
       industry: data.scanx?.fundamentals?.Industry || null,
+      website: data.website || null,
+      logo_url: data.logoUrl || null,
     },
     run: {
       symbol,

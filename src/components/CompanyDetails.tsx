@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { AppFooter } from "@/components/AppFooter";
 import { AppHeader } from "@/components/AppHeader";
-import { LogoMark } from "@/components/LogoMark";
-import { PriceHero } from "@/components/PriceHero";
+import { PriceHero, type PersistStatus } from "@/components/PriceHero";
 import { ScrollableTabs } from "@/components/ScrollableTabs";
+import { useScrollChromeVisible } from "@/hooks/useScrollDirection";
 import { ForecastPanel } from "@/components/decision/ForecastPanel";
 import { FundamentalsPanel } from "@/components/decision/FundamentalsPanel";
 import { HoldingPanel } from "@/components/decision/HoldingPanel";
@@ -53,6 +53,9 @@ type CompanyDetailsProps = {
   loadingName: string;
   onBack: () => void;
   onHoldings: () => void;
+  /** Re-fetch live company + enrichment data for the current symbol. */
+  onRefresh?: () => void;
+  refreshing?: boolean;
 };
 
 function DetailsSkeleton({ name }: { name: string }) {
@@ -60,7 +63,7 @@ function DetailsSkeleton({ name }: { name: string }) {
     <div className="flex flex-col gap-6" aria-busy="true">
       <div>
         <p className="mb-3 text-sm text-muted-foreground">
-          Building decision desk for <strong>{name}</strong>…
+          Loading <strong>{name}</strong>…
         </p>
         <Skeleton className="mb-2 h-7 w-2/3 max-w-sm" />
         <Skeleton className="h-5 w-40" />
@@ -79,6 +82,8 @@ export function CompanyDetails({
   loadingName,
   onBack,
   onHoldings,
+  onRefresh,
+  refreshing = false,
 }: CompanyDetailsProps) {
   const initial = parseDeskQuery();
   const [tab, setTab] = useState<DeskTab>(initial.tab);
@@ -89,6 +94,7 @@ export function CompanyDetails({
     DecisionPayload["macro"]["markers"] | null
   >(null);
   const [enriching, setEnriching] = useState(false);
+  const [persistStatus, setPersistStatus] = useState<PersistStatus>("idle");
   const lastSavedKeyRef = useRef("");
   const { getBySymbol } = useHoldings();
   const holding = data?.symbol ? getBySymbol(data.symbol) : null;
@@ -116,7 +122,9 @@ export function CompanyDetails({
     const q = parseDeskQuery();
     setTab(q.tab);
     setHorizon(q.horizon);
-  }, [data?.symbol]);
+    setPersistStatus("idle");
+    lastSavedKeyRef.current = "";
+  }, [data?.symbol, data?.fetchedAt]);
 
   useEffect(() => {
     if (tab === "position" && !showPositionTab) {
@@ -151,7 +159,12 @@ export function CompanyDetails({
     return () => {
       cancelled = true;
     };
-  }, [data?.symbol, data?.company, data?.scanx?.fundamentals?.Sector]);
+  }, [
+    data?.symbol,
+    data?.company,
+    data?.fetchedAt,
+    data?.scanx?.fundamentals?.Sector,
+  ]);
 
   const decision = useMemo(() => {
     if (!data) return null;
@@ -172,7 +185,10 @@ export function CompanyDetails({
   // Persist settled desk runs (forecast + verdict) to Supabase
   useEffect(() => {
     if (!data || !decision || enriching) return;
-    if (decision.verdict.provisional) return;
+    if (decision.verdict.provisional) {
+      setPersistStatus("idle");
+      return;
+    }
     const key = [
       decision.symbol,
       decision.horizon,
@@ -182,11 +198,20 @@ export function CompanyDetails({
       decision.verdict.action,
       decision.verdict.composite,
     ].join("|");
-    if (key === lastSavedKeyRef.current) return;
+    if (key === lastSavedKeyRef.current) {
+      setPersistStatus("saved");
+      return;
+    }
+    setPersistStatus("saving");
     const timer = window.setTimeout(() => {
       void saveDeskRun(decision, data, companyPath).then((res) => {
-        if (res.ok) lastSavedKeyRef.current = key;
-        else if (res.error) console.warn("[persist] desk run:", res.error);
+        if (res.ok) {
+          lastSavedKeyRef.current = key;
+          setPersistStatus("saved");
+        } else {
+          setPersistStatus("failed");
+          if (res.error) console.warn("[persist] desk run:", res.error);
+        }
       });
     }, 1200);
     return () => window.clearTimeout(timer);
@@ -203,75 +228,46 @@ export function CompanyDetails({
     replaceDeskQuery({ tab, horizon: next });
   }
 
+  const tabsVisible = useScrollChromeVisible();
+  const showDeskTabs = Boolean(!error && data);
+
   return (
     <div className="flex min-h-screen flex-col">
       <AppHeader
         brand={false}
         onHoldingsClick={onHoldings}
         leading={
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="min-h-9 shrink-0 gap-1.5 px-2 sm:px-2.5"
-              aria-label="Back to search"
-              onClick={onBack}
-            >
-              <ArrowLeft data-icon="inline-start" className="size-4" />
-              <span className="hidden sm:inline">Back</span>
-            </Button>
-            <LogoMark size={24} className="hidden rounded-md md:block" />
-            {data?.symbol ? (
-              <span className="max-w-[7rem] truncate text-sm font-semibold tracking-tight tabular sm:max-w-none">
-                {data.symbol}
-              </span>
-            ) : null}
-            {enriching ? (
-              <span className="hidden text-xs text-muted-foreground lg:inline">
-                Loading OHLC · news · macro…
-              </span>
-            ) : null}
-            {!loading && !error && data ? (
-              <div
-                role="group"
-                aria-label="Analysis horizon"
-                className="ml-1 hidden grid-cols-2 gap-0.5 rounded-xl border border-border bg-card p-0.5 sm:grid"
-              >
-                {(
-                  [
-                    ["long", "Long"],
-                    ["swing", "Swing"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => onHorizonChange(value)}
-                    className={cn(
-                      "min-h-8 rounded-lg px-2.5 text-xs font-semibold transition-colors",
-                      horizon === value
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-9 shrink-0 gap-1.5 px-2 sm:px-2.5"
+            aria-label="Back to search"
+            onClick={onBack}
+          >
+            <ArrowLeft data-icon="inline-start" className="size-4" />
+            <span className="hidden sm:inline">Back</span>
+          </Button>
         }
       />
 
-      {!loading && !error && data ? (
-        <div className="border-b border-border/60 bg-background">
+      {showDeskTabs ? (
+        <div
+          className={cn(
+            "sticky top-[3.25rem] z-10 overflow-hidden border-border/60 bg-background/90 backdrop-blur-md transition-[max-height,opacity,border-color] duration-200 ease-out sm:top-[3.5rem]",
+            tabsVisible
+              ? "max-h-16 border-b opacity-100"
+              : "pointer-events-none max-h-0 border-b-0 opacity-0"
+          )}
+          aria-hidden={!tabsVisible}
+        >
           <div className="mx-auto max-w-5xl">
             <ScrollableTabs aria-label="Desk sections">
               {deskTabs.map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
+                  tabIndex={tabsVisible ? 0 : -1}
                   onClick={() => onTabChange(value)}
                   className={cn(
                     "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-colors sm:text-sm",
@@ -289,9 +285,9 @@ export function CompanyDetails({
       ) : null}
 
       <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-5 sm:px-6 sm:py-8">
-        {loading ? <DetailsSkeleton name={loadingName} /> : null}
+        {loading && !data ? <DetailsSkeleton name={loadingName} /> : null}
 
-        {!loading && error ? (
+        {error && !data ? (
           <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
             <p className="text-lg text-destructive">{error}</p>
             <Button type="button" size="lg" className="min-h-11" onClick={onBack}>
@@ -300,44 +296,22 @@ export function CompanyDetails({
           </div>
         ) : null}
 
-        {!loading && !error && data && decision ? (
+        {!error && data && decision ? (
           <>
-            <div className="flex items-center justify-between gap-3 sm:hidden">
-              <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                Horizon
-              </p>
-              <div className="grid grid-cols-2 gap-0.5 rounded-xl border border-border bg-card p-0.5">
-                {(
-                  [
-                    ["long", "Long"],
-                    ["swing", "Swing"],
-                  ] as const
-                ).map(([value, label]) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => onHorizonChange(value)}
-                    className={cn(
-                      "min-h-9 rounded-lg px-3 text-xs font-semibold transition-colors",
-                      horizon === value
-                        ? "bg-primary text-primary-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <PriceHero
               company={data.company || data.symbol || "Company"}
               symbol={data.symbol || ""}
+              logoUrl={data.logoUrl}
               price={headerPrice}
               fetchedAt={data.fetchedAt}
+              horizon={horizon}
+              onHorizonChange={onHorizonChange}
               suitability={decision.suitability}
               inPortfolio={showPositionTab}
               provisional={enriching || decision.verdict.provisional}
+              persistStatus={persistStatus}
+              refreshing={refreshing || loading}
+              onRefresh={onRefresh}
             />
 
             <Tabs value={tab} onValueChange={onTabChange} className="w-full gap-5">

@@ -157,6 +157,8 @@ export type FinologyBundle = {
 export type CompanyData = {
   company?: string;
   symbol?: string;
+  website?: string | null;
+  logoUrl?: string | null;
   snapshot?: CompanySnapshot;
   screener?: ScreenerBundle;
   scanx?: ScanxBundle;
