@@ -66,7 +66,7 @@ To connect (optional): Supabase dashboard → project **stock-glance** → **Pro
 
 ### Holdings migration
 
-SQL lives at [`supabase/migrations/20261003043000_holdings_auth.sql`](supabase/migrations/20261003043000_holdings_auth.sql).
+SQL lives at [`supabase/migrations/20261002223946_holdings_auth.sql`](supabase/migrations/20261002223946_holdings_auth.sql).
 
 It drops the legacy global `positions` table and creates `public.holdings` with:
 
