@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import { AppFooter } from "@/components/AppFooter";
 import { AppHeader } from "@/components/AppHeader";
 import { LogoMark } from "@/components/LogoMark";
 import { PriceHero } from "@/components/PriceHero";
@@ -202,7 +203,7 @@ export function CompanyDetails({
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="flex min-h-screen flex-col">
       <AppHeader
         brand={false}
         onHoldingsClick={onHoldings}
@@ -212,15 +213,16 @@ export function CompanyDetails({
               type="button"
               variant="outline"
               size="sm"
-              className="min-h-9 shrink-0 gap-1.5"
+              className="min-h-9 shrink-0 gap-1.5 px-2 sm:px-2.5"
+              aria-label="Back to search"
               onClick={onBack}
             >
               <ArrowLeft data-icon="inline-start" className="size-4" />
-              Back
+              <span className="hidden sm:inline">Back</span>
             </Button>
-            <LogoMark size={24} className="hidden rounded-md sm:block" />
+            <LogoMark size={24} className="hidden rounded-md md:block" />
             {data?.symbol ? (
-              <span className="truncate text-sm font-semibold tracking-tight tabular">
+              <span className="max-w-[7rem] truncate text-sm font-semibold tracking-tight tabular sm:max-w-none">
                 {data.symbol}
               </span>
             ) : null}
@@ -286,7 +288,7 @@ export function CompanyDetails({
         </div>
       ) : null}
 
-      <main className="mx-auto flex max-w-5xl flex-col gap-6 px-4 py-5 sm:px-6 sm:py-8">
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-5 sm:px-6 sm:py-8">
         {loading ? <DetailsSkeleton name={loadingName} /> : null}
 
         {!loading && error ? (
@@ -307,7 +309,7 @@ export function CompanyDetails({
               <div className="grid grid-cols-2 gap-0.5 rounded-xl border border-border bg-card p-0.5">
                 {(
                   [
-                    ["long", "Long-term"],
+                    ["long", "Long"],
                     ["swing", "Swing"],
                   ] as const
                 ).map(([value, label]) => (
@@ -375,6 +377,8 @@ export function CompanyDetails({
           </>
         ) : null}
       </main>
+
+      <AppFooter onBrandClick={onBack} />
     </div>
   );
 }

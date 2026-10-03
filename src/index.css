@@ -183,6 +183,65 @@
     animation: enter-fade 520ms ease-out 140ms both;
   }
 
+  .landing-orb {
+    pointer-events: none;
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(64px);
+    opacity: 0.55;
+  }
+
+  .landing-orb-a {
+    top: -8rem;
+    left: 18%;
+    width: 28rem;
+    height: 28rem;
+    background: color-mix(in oklab, var(--primary) 28%, transparent);
+    animation: landing-drift 14s ease-in-out infinite alternate;
+  }
+
+  .landing-orb-b {
+    right: -6rem;
+    bottom: 10%;
+    width: 22rem;
+    height: 22rem;
+    background: color-mix(in oklab, var(--chart-5) 18%, transparent);
+    animation: landing-drift 18s ease-in-out infinite alternate-reverse;
+  }
+
+  .landing-grid {
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    opacity: 0.35;
+    background-image:
+      linear-gradient(
+        to right,
+        color-mix(in oklab, var(--border) 55%, transparent) 1px,
+        transparent 1px
+      ),
+      linear-gradient(
+        to bottom,
+        color-mix(in oklab, var(--border) 55%, transparent) 1px,
+        transparent 1px
+      );
+    background-size: 48px 48px;
+    mask-image: radial-gradient(
+      ellipse 70% 60% at 50% 40%,
+      black 10%,
+      transparent 75%
+    );
+  }
+
+  @keyframes landing-drift {
+    from {
+      transform: translate3d(0, 0, 0);
+    }
+    to {
+      transform: translate3d(2.5%, 3%, 0);
+    }
+  }
+
   @keyframes enter-fade {
     from {
       opacity: 0;
@@ -250,6 +309,8 @@
     .enter-fade,
     .enter-fade-delay-1,
     .enter-fade-delay-2,
+    .landing-orb-a,
+    .landing-orb-b,
     .wake-dots {
       animation: none !important;
       transition: none !important;

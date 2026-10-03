@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
+import { AppFooter } from "@/components/AppFooter";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,21 +54,22 @@ export function HoldingsPage({ onHome, onOpenCompany }: HoldingsPageProps) {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen">
+      <div className="flex min-h-screen flex-col">
         <AppHeader onBrandClick={onHome} onHoldingsClick={() => {}} />
-        <main className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+        <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
           <Skeleton className="mb-4 h-8 w-48" />
           <Skeleton className="h-32 w-full" />
         </main>
+        <AppFooter onBrandClick={onHome} />
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen">
+      <div className="flex min-h-screen flex-col">
         <AppHeader onBrandClick={onHome} onHoldingsClick={() => {}} />
-        <main className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
+        <main className="mx-auto flex w-full max-w-md flex-1 flex-col items-center gap-4 px-4 py-20 text-center sm:px-6">
           <h1 className="text-2xl font-semibold tracking-tight">My Holdings</h1>
           <p className="text-sm text-muted-foreground">
             Sign in with Google to keep a private list of your Indian stock
@@ -79,21 +81,27 @@ export function HoldingsPage({ onHome, onOpenCompany }: HoldingsPageProps) {
             Sign in / Sign up
           </Button>
         </main>
+        <AppFooter onBrandClick={onHome} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <AppHeader onBrandClick={onHome} onHoldingsClick={() => {}} />
-      <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8 sm:px-6">
+    <div className="flex min-h-screen flex-col">
+      <AppHeader
+        onBrandClick={onHome}
+        onHoldingsClick={() => {}}
+        holdingsActive
+      />
+      <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
+          <div className="max-w-xl">
             <h1 className="text-2xl font-semibold tracking-tight">
               My Holdings
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Private to your account · INR · Indian equities
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+              Your private list of Indian equities. Tap any row to open its full
+              decision desk — forecast, verdict, and sources for that stock.
             </p>
           </div>
           <Button
@@ -121,13 +129,14 @@ export function HoldingsPage({ onHome, onOpenCompany }: HoldingsPageProps) {
             <Skeleton className="h-24 w-full" />
           </div>
         ) : !holdings.length ? (
-          <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border px-6 py-16 text-center">
+          <div className="flex flex-col items-center gap-4 rounded-2xl border border-dashed border-border bg-card/40 px-6 py-16 text-center">
             <p className="text-base font-medium">
-              Add your first stock or holding
+              Start your personalised holdings space
             </p>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              Search a ticker, enter quantity and average buy price. You can
-              remove and re-add later — editing is not available in v1.
+            <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+              Search a ticker, enter quantity and average buy price. Each holding
+              opens into a detailed analysis desk so you can review the thesis
+              behind positions you already own.
             </p>
             <Button type="button" onClick={() => setAddOpen(true)}>
               <Plus className="mr-1.5 size-4" />
@@ -161,6 +170,8 @@ export function HoldingsPage({ onHome, onOpenCompany }: HoldingsPageProps) {
           </ul>
         )}
       </main>
+
+      <AppFooter onBrandClick={onHome} />
 
       {addOpen ? (
         <AddHoldingDialog
@@ -218,9 +229,10 @@ function HoldingRow({
             {holding.symbol}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex shrink-0 gap-1.5 sm:gap-2">
           <Button type="button" size="sm" variant="secondary" onClick={onView}>
-            View Details
+            <span className="sm:hidden">Analyze</span>
+            <span className="hidden sm:inline">Open analysis</span>
           </Button>
           {!confirming ? (
             <Button

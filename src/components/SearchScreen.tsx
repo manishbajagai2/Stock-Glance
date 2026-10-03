@@ -1,7 +1,11 @@
 import { useEffect, useRef, useState } from "react";
+import { Search } from "lucide-react";
+import { AppFooter } from "@/components/AppFooter";
 import { AppHeader } from "@/components/AppHeader";
+import { LandingHighlights } from "@/components/LandingHighlights";
 import { LogoMark } from "@/components/LogoMark";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
 import { searchCompanies, type SearchResult } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -37,6 +41,8 @@ type SearchScreenProps = {
 };
 
 export function SearchScreen({ onPick, onHoldings, onHome }: SearchScreenProps) {
+  const { user, loading: authLoading, signInWithGoogle } = useAuth();
+  const [signingIn, setSigningIn] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [activeIndex, setActiveIndex] = useState(-1);
@@ -140,39 +146,89 @@ export function SearchScreen({ onPick, onHoldings, onHome }: SearchScreenProps) 
     results.length > 0 ||
     (hasSearched && query.trim().length >= MIN_QUERY_LEN);
 
-  return (
-    <div className="min-h-screen">
-      <AppHeader
-        onBrandClick={onHome}
-        onHoldingsClick={onHoldings}
-        className="[&>div]:max-w-xl"
-      />
+  async function handleSignIn() {
+    setSigningIn(true);
+    await signInWithGoogle();
+    setSigningIn(false);
+  }
 
-      <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center px-4 py-10 sm:px-6">
-        <div className="w-full max-w-xl text-center">
-          <div className="mb-8 flex flex-col items-center gap-3">
-            <LogoMark size={56} className="rounded-xl shadow-sm" />
-            <h1 className="text-[clamp(2rem,6vw,2.75rem)] font-semibold tracking-tight">
+  return (
+    <div className="flex min-h-screen flex-col">
+      <AppHeader onBrandClick={onHome} onHoldingsClick={onHoldings} />
+
+      <main className="relative z-[1] flex flex-1 flex-col overflow-x-hidden">
+        <div aria-hidden className="landing-orb landing-orb-a" />
+        <div aria-hidden className="landing-orb landing-orb-b" />
+        <div aria-hidden className="landing-grid" />
+
+        <div
+          className={cn(
+            "relative mx-auto flex w-full max-w-2xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-16",
+            // Idle: center the hero. Searching: pin to top so results push the footer down.
+            showDropdown ? "justify-start pb-10" : "justify-center"
+          )}
+        >
+          <div
+            className={cn(
+              "enter-fade flex flex-col items-center text-center transition-[margin] duration-200",
+              showDropdown ? "mb-4 sm:mb-6" : "mb-8 sm:mb-10"
+            )}
+          >
+            <LogoMark
+              size={56}
+              className={cn(
+                "rounded-2xl shadow-[0_12px_40px_-18px_color-mix(in_oklab,var(--primary)_55%,transparent)] ring-1 ring-border/60",
+                showDropdown ? "mb-5 hidden sm:block" : "mb-4 sm:mb-5"
+              )}
+            />
+            <h1
+              className={cn(
+                "font-display font-semibold tracking-tight transition-all duration-200",
+                showDropdown
+                  ? "text-xl sm:text-[clamp(2.1rem,7vw,3.35rem)]"
+                  : "text-[clamp(2.1rem,7vw,3.35rem)]"
+              )}
+            >
               Stock Glance
             </h1>
-            <p className="text-base text-muted-foreground sm:text-[1.05rem]">
-              Search any Indian stock. Get a decision desk — not just a dump.
+            <p
+              className={cn(
+                "enter-fade-delay-1 max-w-md text-muted-foreground transition-all duration-200",
+                showDropdown
+                  ? "mt-1 hidden text-sm sm:mt-3 sm:block sm:text-[1.05rem]"
+                  : "mt-2 text-sm sm:mt-3 sm:text-[1.05rem]"
+              )}
+            >
+              India equities. A decision desk — not a dump.
             </p>
           </div>
 
-          <div className="relative text-left">
+          <div className="enter-fade-delay-1 relative">
+            <label htmlFor="landing-search" className="sr-only">
+              Company or ticker
+            </label>
+            <Search
+              aria-hidden
+              className="pointer-events-none absolute top-1/2 left-4 z-[1] size-5 -translate-y-1/2 text-muted-foreground sm:left-5"
+            />
             <Input
+              id="landing-search"
               ref={inputRef}
               type="search"
+              name="q"
               value={query}
               maxLength={MAX_QUERY_LEN}
               autoComplete="off"
               spellCheck={false}
-              placeholder="Company or ticker…"
+              placeholder="Search company or ticker…"
               aria-autocomplete="list"
               aria-expanded={showDropdown}
               aria-controls="search-results"
-              className="h-14 rounded-full border-border bg-card px-5 text-base shadow-sm sm:h-16 sm:text-lg"
+              className={cn(
+                "h-14 rounded-2xl border-border/90 bg-card/90 pr-5 pl-11 text-base shadow-[0_10px_40px_-24px_rgba(0,0,0,0.55)] backdrop-blur-sm",
+                "sm:h-16 sm:rounded-[1.25rem] sm:pl-12 sm:text-lg",
+                "transition-[box-shadow,border-color] duration-300 focus-visible:border-primary/50 focus-visible:shadow-[0_16px_48px_-28px_color-mix(in_oklab,var(--primary)_70%,transparent)]"
+              )}
               onChange={(e) => {
                 const clamped = clampQuery(e.target.value);
                 setQuery(clamped);
@@ -236,18 +292,19 @@ export function SearchScreen({ onPick, onHoldings, onHome }: SearchScreenProps) 
               }}
             />
 
+            {/* In-flow panel (not absolute) so results expand main and keep the footer below */}
             {showDropdown ? (
               <div
                 id="search-results"
                 role="listbox"
-                className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-10 overflow-hidden rounded-2xl border border-border bg-card shadow-lg"
+                className="mt-2.5 max-h-[min(22rem,calc(100dvh-11rem))] overflow-hidden rounded-2xl border border-border bg-popover shadow-xl ring-1 ring-foreground/10"
               >
                 {searching ? (
                   <div className="px-4 py-3 text-sm text-muted-foreground">
                     Searching…
                   </div>
                 ) : results.length ? (
-                  <ul className="max-h-72 overflow-y-auto py-1">
+                  <ul className="max-h-[min(22rem,calc(100dvh-11rem))] overflow-y-auto overscroll-contain py-1">
                     {results.map((r, i) => (
                       <li key={`${r.symbol}-${r.path}`}>
                         <button
@@ -255,7 +312,7 @@ export function SearchScreen({ onPick, onHoldings, onHome }: SearchScreenProps) 
                           role="option"
                           aria-selected={i === activeIndex}
                           className={cn(
-                            "flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-base",
+                            "flex min-h-11 w-full items-center justify-between gap-3 px-4 py-2.5 text-left text-sm transition-colors sm:text-base",
                             i === activeIndex
                               ? "bg-accent text-accent-foreground"
                               : "hover:bg-muted"
@@ -264,7 +321,7 @@ export function SearchScreen({ onPick, onHoldings, onHome }: SearchScreenProps) 
                           onClick={() => pick(r)}
                         >
                           <span className="min-w-0 truncate">{r.name}</span>
-                          <span className="shrink-0 text-sm font-semibold text-muted-foreground">
+                          <span className="shrink-0 text-xs font-semibold text-muted-foreground sm:text-sm">
                             {r.symbol}
                           </span>
                         </button>
@@ -281,7 +338,7 @@ export function SearchScreen({ onPick, onHoldings, onHome }: SearchScreenProps) 
           </div>
 
           <div
-            className="mt-4 min-h-12 text-sm"
+            className="mt-3 min-h-6 text-center text-sm"
             aria-live="polite"
             role="status"
           >
@@ -290,15 +347,45 @@ export function SearchScreen({ onPick, onHoldings, onHome }: SearchScreenProps) 
                 className={cn(
                   feedback.tone === "ok" && "text-primary",
                   feedback.tone === "muted" && "text-muted-foreground",
-                  feedback.tone === "warn" && "text-[#8a4b12]"
+                  feedback.tone === "warn" &&
+                    "text-[#8a4b12] dark:text-[#e0a46a]"
                 )}
               >
                 {feedback.message}
               </p>
+            ) : !showDropdown ? (
+              <p className="text-xs text-muted-foreground/80">
+                Try RELIANCE, TCS, or a company name
+              </p>
             ) : null}
+          </div>
+
+          {/* Keep highlights out of the way while results are open */}
+          <div
+            className={cn(
+              "transition-[opacity,transform,margin] duration-200",
+              showDropdown
+                ? "pointer-events-none mt-4 max-h-0 translate-y-1 overflow-hidden opacity-0"
+                : "mt-8 opacity-100 sm:mt-10"
+            )}
+            aria-hidden={showDropdown}
+          >
+            {!authLoading ? (
+              <LandingHighlights
+                className="enter-fade-delay-2"
+                signedIn={Boolean(user)}
+                signingIn={signingIn}
+                onHoldings={onHoldings}
+                onSignIn={() => void handleSignIn()}
+              />
+            ) : (
+              <div className="h-28" aria-hidden />
+            )}
           </div>
         </div>
       </main>
+
+      <AppFooter onBrandClick={onHome} />
     </div>
   );
 }

@@ -1,8 +1,18 @@
 import { useState, type ReactNode } from "react";
-import { LogOut } from "lucide-react";
+import { BriefcaseBusiness, ChevronDown, LogOut } from "lucide-react";
 import { LogoMark } from "@/components/LogoMark";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +21,8 @@ type AppHeaderProps = {
   brand?: boolean;
   onBrandClick?: () => void;
   onHoldingsClick?: () => void;
+  /** Highlight the holdings control when that view is active. */
+  holdingsActive?: boolean;
   className?: string;
   leading?: ReactNode;
 };
@@ -19,6 +31,7 @@ export function AppHeader({
   brand = true,
   onBrandClick,
   onHoldingsClick,
+  holdingsActive = false,
   className,
   leading,
 }: AppHeaderProps) {
@@ -28,10 +41,18 @@ export function AppHeader({
   const avatar =
     (user?.user_metadata?.avatar_url as string | undefined) ||
     (user?.user_metadata?.picture as string | undefined);
-  const label =
-    user?.email ||
+  const displayName =
     (user?.user_metadata?.full_name as string | undefined) ||
-    "Account";
+    (user?.user_metadata?.name as string | undefined) ||
+    null;
+  const email = user?.email || null;
+  const label = email || displayName || "Account";
+  const initials = (displayName || email || "A")
+    .split(/\s+|@/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 
   async function onSignIn() {
     setAuthError(null);
@@ -48,85 +69,117 @@ export function AppHeader({
         className
       )}
     >
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <div className="flex min-w-0 items-center gap-2">
+      <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 py-2.5 sm:gap-3 sm:px-6 sm:py-3">
+        <div className="flex min-w-0 items-center gap-1.5 sm:gap-2">
           {leading}
           {brand ? (
             <button
               type="button"
               onClick={onBrandClick}
-              className="flex min-w-0 items-center gap-2 rounded-lg text-left"
+              className="flex min-w-0 items-center gap-2 rounded-lg text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/50 sm:gap-2.5"
             >
-              <LogoMark size={28} className="shrink-0 rounded-md" />
-              <span className="truncate text-sm font-semibold tracking-tight">
+              <LogoMark size={28} className="shrink-0 rounded-md sm:size-[30px]" />
+              <span className="truncate text-sm font-semibold tracking-tight sm:text-[0.95rem]">
                 Stock Glance
               </span>
             </button>
           ) : null}
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="flex shrink-0 items-center gap-1 sm:gap-2">
           {!loading && user ? (
             <>
               <Button
                 type="button"
-                variant="ghost"
+                variant={holdingsActive ? "secondary" : "outline"}
                 size="sm"
-                className="hidden text-xs font-semibold sm:inline-flex"
-                onClick={onHoldingsClick}
-              >
-                My Holdings
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                className="inline-flex text-xs font-semibold sm:hidden"
-                onClick={onHoldingsClick}
-              >
-                Holdings
-              </Button>
-              <div
-                className="flex max-w-[9rem] items-center gap-1.5 truncate rounded-lg border border-border bg-card/60 px-2 py-1 text-xs sm:max-w-[14rem]"
-                title={label}
-              >
-                {avatar ? (
-                  <img
-                    src={avatar}
-                    alt=""
-                    className="size-5 shrink-0 rounded-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[0.65rem] font-bold text-primary">
-                    {label.slice(0, 1).toUpperCase()}
-                  </span>
+                className={cn(
+                  "gap-1.5 font-semibold",
+                  holdingsActive && "ring-1 ring-primary/25"
                 )}
-                <span className="hidden truncate sm:inline">{label}</span>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="gap-1 text-xs"
-                onClick={() => void signOut()}
+                aria-current={holdingsActive ? "page" : undefined}
+                onClick={onHoldingsClick}
               >
-                <LogOut className="size-3.5" />
-                <span className="hidden sm:inline">Sign out</span>
+                <BriefcaseBusiness data-icon="inline-start" />
+                <span className="hidden sm:inline">My Holdings</span>
+                <span className="sm:hidden">Holdings</span>
               </Button>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="gap-1.5 pl-1 pr-1.5"
+                    aria-label="Account menu"
+                  >
+                    <Avatar size="sm">
+                      {avatar ? (
+                        <AvatarImage
+                          src={avatar}
+                          alt=""
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : null}
+                      <AvatarFallback>{initials || "A"}</AvatarFallback>
+                    </Avatar>
+                    <ChevronDown className="size-3.5 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="min-w-56">
+                  <DropdownMenuGroup>
+                    <DropdownMenuLabel className="font-normal">
+                      <div className="flex flex-col gap-0.5">
+                        {displayName ? (
+                          <span className="text-sm font-medium text-foreground">
+                            {displayName}
+                          </span>
+                        ) : null}
+                        <span className="truncate text-xs text-muted-foreground">
+                          {label}
+                        </span>
+                      </div>
+                    </DropdownMenuLabel>
+                  </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem
+                      onClick={onHoldingsClick}
+                      className="gap-2"
+                    >
+                      <BriefcaseBusiness />
+                      Open holdings
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      className="gap-2"
+                      onClick={() => void signOut()}
+                    >
+                      <LogOut />
+                      Sign out
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : !loading ? (
             <Button
               type="button"
               size="sm"
-              className="text-xs font-semibold"
+              className="font-semibold"
               disabled={signingIn}
               onClick={() => void onSignIn()}
             >
-              {signingIn ? "Redirecting…" : "Sign in / Sign up"}
+              <span className="sm:hidden">
+                {signingIn ? "…" : "Sign in"}
+              </span>
+              <span className="hidden sm:inline">
+                {signingIn ? "Redirecting…" : "Sign in / Sign up"}
+              </span>
             </Button>
           ) : null}
-          <ThemeSwitcher />
+          <ThemeSwitcher className="scale-90 sm:scale-100" />
         </div>
       </div>
       {authError ? (
