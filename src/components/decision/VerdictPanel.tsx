@@ -82,6 +82,7 @@ export function VerdictPanel({ decision }: { decision: DecisionPayload }) {
           </p>
           <p className="mt-0.5 text-sm opacity-90">
             Composite {v.composite}
+            <span className="opacity-80">/100</span>
             {v.gateTriggered ? ` · gate: ${v.gateTriggered}` : ""}
           </p>
         </div>
@@ -111,8 +112,8 @@ export function VerdictPanel({ decision }: { decision: DecisionPayload }) {
             tone={v.confidence < 40 ? "danger" : "primary"}
           />
           <p className="max-w-[14rem] text-center text-xs text-muted-foreground">
-            {decision.process.scoredCount}/{decision.process.totalSteps} steps ·
-            skips don’t count as zeros
+            Based on {decision.process.scoredCount}/{decision.process.totalSteps}{" "}
+            scored steps · confidence out of 100
           </p>
         </div>
         <ScoreArcRow

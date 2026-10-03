@@ -4,6 +4,7 @@ import { AppFooter } from "@/components/AppFooter";
 import { AppHeader } from "@/components/AppHeader";
 import { LogoMark } from "@/components/LogoMark";
 import { PriceHero } from "@/components/PriceHero";
+import { ScrollableTabs } from "@/components/ScrollableTabs";
 import { ForecastPanel } from "@/components/decision/ForecastPanel";
 import { FundamentalsPanel } from "@/components/decision/FundamentalsPanel";
 import { HoldingPanel } from "@/components/decision/HoldingPanel";
@@ -265,26 +266,25 @@ export function CompanyDetails({
 
       {!loading && !error && data ? (
         <div className="border-b border-border/60 bg-background">
-          <nav
-            aria-label="Desk sections"
-            className="mx-auto flex max-w-5xl gap-1 overflow-x-auto px-4 py-2 pe-8 sm:px-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          >
-            {deskTabs.map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => onTabChange(value)}
-                className={cn(
-                  "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-colors sm:text-sm",
-                  tab === value
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
+          <div className="mx-auto max-w-5xl">
+            <ScrollableTabs aria-label="Desk sections">
+              {deskTabs.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => onTabChange(value)}
+                  className={cn(
+                    "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-colors sm:text-sm",
+                    tab === value
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </ScrollableTabs>
+          </div>
         </div>
       ) : null}
 

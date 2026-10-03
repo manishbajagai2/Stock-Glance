@@ -78,15 +78,23 @@ export function ScoreRing({
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-        <span
-          className={cn(
-            "tabular font-semibold tracking-tight",
-            valueClass
-          )}
-          style={{ fontSize: Math.round(size * 0.28) }}
-        >
-          {Math.round(v)}
-        </span>
+          <span
+            className={cn(
+              "tabular font-semibold tracking-tight",
+              valueClass
+            )}
+            style={{ fontSize: Math.round(size * 0.26) }}
+          >
+            {Math.round(v)}
+            <span
+              className={cn(
+                "ml-0.5 text-[0.55em] font-medium opacity-70",
+                labelClass
+              )}
+            >
+              /100
+            </span>
+          </span>
         {label ? (
           <span
             className={cn(
