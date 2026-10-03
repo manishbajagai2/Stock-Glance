@@ -120,8 +120,18 @@ export function LandingHighlights({
             current.detail
           ) : (
             <>
-              <span className="text-foreground/85">Hover a capability</span>
-              {" for details — or start typing a company above."}
+              <span className="text-foreground/85 sm:hidden">
+                Tap a capability
+              </span>
+              <span className="hidden text-foreground/85 sm:inline">
+                Hover a capability
+              </span>
+              <span className="sm:hidden">
+                {" for details — or search a company above."}
+              </span>
+              <span className="hidden sm:inline">
+                {" for details — or start typing a company above."}
+              </span>
             </>
           )}
         </p>

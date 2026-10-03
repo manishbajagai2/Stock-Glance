@@ -23,7 +23,22 @@ function viewFromPath(pathname: string): View {
   return "search";
 }
 
-function Shell({ children }: { children: ReactNode }) {
+function Shell({
+  children,
+  lockViewport = false,
+}: {
+  children: ReactNode;
+  /** Pin chrome (header/tabs) and scroll content only — company desk. */
+  lockViewport?: boolean;
+}) {
+  if (lockViewport) {
+    return (
+      <div className="flex h-dvh flex-col overflow-hidden">
+        <ServerWakeBanner className="shrink-0" />
+        <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
+      </div>
+    );
+  }
   return (
     <>
       <ServerWakeBanner />
@@ -192,7 +207,7 @@ export default function App() {
 
   if (view === "details") {
     return (
-      <Shell>
+      <Shell lockViewport>
         <CompanyDetails
           loading={loading}
           error={error}

@@ -1,6 +1,7 @@
 import type { DecisionPayload, OhlcBar } from "@/lib/api";
 import { displayValue } from "@/lib/api";
-import { LevelsStrip, PriceCanvas, ScoreRing } from "@/components/viz";
+import { DeskScoreHero } from "@/components/DeskScoreHero";
+import { LevelsStrip, PriceCanvas } from "@/components/viz";
 
 export function TechnicalsPanel({
   decision,
@@ -51,27 +52,36 @@ export function TechnicalsPanel({
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <ScoreRing value={t.score} label="Tech" size={100} />
-        <div className="grid flex-1 gap-2 sm:grid-cols-3">
-          {[
-            ["Regime", t.regime],
-            ["RSI(14)", t.rsi != null ? t.rsi.toFixed(0) : "—"],
-            ["ATR", t.atr != null ? t.atr.toFixed(1) : "—"],
-          ].map(([label, val]) => (
-            <div
-              key={String(label)}
-              className="rounded-xl border border-border bg-card/60 px-3 py-3"
-            >
-              <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
-                {label}
-              </p>
-              <p className="tabular mt-1 text-lg font-semibold capitalize">
-                {displayValue(val)}
-              </p>
-            </div>
-          ))}
-        </div>
+      <DeskScoreHero
+        eyebrow="Technicals"
+        title={<span className="capitalize">{t.regime}</span>}
+        subtitle={`RSI ${t.rsi != null ? t.rsi.toFixed(0) : "—"} · ATR ${
+          t.atr != null ? t.atr.toFixed(1) : "—"
+        }`}
+        score={t.score}
+        scoreLabel="Strength"
+        scoreHint="Trend & momentum quality — not a buy signal alone"
+        scoreDetail="From price regime, moving averages, RSI/ATR context, and structure. Higher means technicals are more supportive for the chosen horizon."
+      />
+
+      <div className="grid gap-2 sm:grid-cols-3">
+        {[
+          ["Regime", t.regime],
+          ["RSI(14)", t.rsi != null ? t.rsi.toFixed(0) : "—"],
+          ["ATR", t.atr != null ? t.atr.toFixed(1) : "—"],
+        ].map(([label, val]) => (
+          <div
+            key={String(label)}
+            className="rounded-xl border border-border bg-card/60 px-3 py-3"
+          >
+            <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
+              {label}
+            </p>
+            <p className="tabular mt-1 text-lg font-semibold capitalize">
+              {displayValue(val)}
+            </p>
+          </div>
+        ))}
       </div>
 
       <div className="grid gap-2 sm:grid-cols-3">

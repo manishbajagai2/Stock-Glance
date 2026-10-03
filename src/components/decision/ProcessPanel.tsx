@@ -1,7 +1,8 @@
 import { AlertTriangle, Check, Minus, X } from "lucide-react";
 import type { DecisionPayload } from "@/lib/api";
 import type { ProcessStatus } from "@/lib/analysis/analystProcess";
-import { ProcessTrack, ScoreRing } from "@/components/viz";
+import { DeskScoreHero } from "@/components/DeskScoreHero";
+import { ProcessTrack } from "@/components/viz";
 import { cn } from "@/lib/utils";
 
 function bandLabel(score: number): string {
@@ -16,38 +17,35 @@ export function ProcessPanel({ decision }: { decision: DecisionPayload }) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-4">
-          <ScoreRing
-            value={p.processConfidence}
-            label="out of 100"
-            size={120}
-            tone={p.processConfidence < 40 ? "danger" : "primary"}
-          />
-          <div>
-            <h3 className="text-base font-semibold tracking-tight">
-              Analyst process
-            </h3>
-            <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+      <DeskScoreHero
+        eyebrow="Analyst process"
+        title={bandLabel(p.processConfidence)}
+        subtitle={
+          <div className="flex flex-col gap-1">
+            <span>
               Confidence is scored 0–100 from the average of scored steps,
               weighted by how much of the checklist had data.
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">{p.trustLine}</p>
+            </span>
+            <span className="text-xs">{p.trustLine}</span>
           </div>
-        </div>
-        <ProcessTrack
-          className="sm:max-w-md sm:flex-1"
-          coveragePct={coveragePct}
-          scoredCount={p.scoredCount}
-          totalSteps={p.totalSteps}
-          steps={p.steps.map((s) => ({
-            id: s.id,
-            order: s.order,
-            status: s.status,
-            title: s.title,
-          }))}
-        />
-      </div>
+        }
+        score={p.processConfidence}
+        scoreLabel="Confidence"
+        scoreHint="How solid the checklist looks given available data"
+        scoreDetail="Average of scored process steps, weighted by how much of the checklist had data. Higher means more of the analysis ran with real inputs."
+      />
+
+      <ProcessTrack
+        coveragePct={coveragePct}
+        scoredCount={p.scoredCount}
+        totalSteps={p.totalSteps}
+        steps={p.steps.map((s) => ({
+          id: s.id,
+          order: s.order,
+          status: s.status,
+          title: s.title,
+        }))}
+      />
 
       <div>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -84,7 +82,10 @@ export function ProcessPanel({ decision }: { decision: DecisionPayload }) {
                       <ul className="mt-1.5 flex flex-col gap-0.5 text-xs text-muted-foreground">
                         {s.evidence.map((e) => (
                           <li key={e} className="flex gap-1.5">
-                            <span aria-hidden className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50" />
+                            <span
+                              aria-hidden
+                              className="mt-1.5 size-1 shrink-0 rounded-full bg-muted-foreground/50"
+                            />
                             <span>{e}</span>
                           </li>
                         ))}

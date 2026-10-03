@@ -1,5 +1,6 @@
 import { cleanLabel, displayValue } from "@/lib/api";
 import type { FinancialTable as FinancialTableData } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 type FinancialTableProps = {
   title: string;
@@ -12,6 +13,9 @@ export function FinancialTable({ title, subtitle, table }: FinancialTableProps) 
 
   const periodHeaders = table.headers.slice(1).map(cleanLabel);
   const metricHeader = cleanLabel(table.headers[0] || "Metric") || "Metric";
+  // Wide multi-period tables need horizontal scroll + a pinned label column.
+  // Narrow tables (e.g. Period / Value growth) must not pin — sticky covers the values on mobile.
+  const needsScroll = periodHeaders.length > 2;
 
   return (
     <section className="flex flex-col gap-3">
@@ -22,16 +26,26 @@ export function FinancialTable({ title, subtitle, table }: FinancialTableProps) 
         ) : null}
       </div>
       <div className="overflow-x-auto rounded-xl border border-border bg-card/50">
-        <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+        <table
+          className={cn(
+            "w-full border-separate border-spacing-0 text-left text-sm",
+            needsScroll && "min-w-[36rem]"
+          )}
+        >
           <thead>
-            <tr className="border-b border-border bg-muted/40">
-              <th className="sticky left-0 z-10 bg-muted/90 px-3 py-2.5 font-semibold backdrop-blur-sm">
+            <tr className="bg-muted/40">
+              <th
+                className={cn(
+                  "border-b border-border px-3 py-2.5 font-semibold",
+                  needsScroll && "sticky left-0 z-10 bg-muted"
+                )}
+              >
                 {metricHeader}
               </th>
               {periodHeaders.map((h, i) => (
                 <th
                   key={`${h}-${i}`}
-                  className="px-3 py-2.5 text-right font-semibold whitespace-nowrap"
+                  className="border-b border-border px-3 py-2.5 text-right font-semibold whitespace-nowrap"
                 >
                   {h}
                 </th>
@@ -39,20 +53,27 @@ export function FinancialTable({ title, subtitle, table }: FinancialTableProps) 
             </tr>
           </thead>
           <tbody>
-            {table.rows.map((row) => {
+            {table.rows.map((row, rowIndex) => {
               const label = cleanLabel(row.label);
+              const isLast = rowIndex === table.rows.length - 1;
               return (
-                <tr
-                  key={label}
-                  className="border-b border-border/70 last:border-b-0"
-                >
-                  <th className="sticky left-0 z-10 bg-card/95 px-3 py-2 font-medium backdrop-blur-sm">
+                <tr key={label}>
+                  <th
+                    className={cn(
+                      "px-3 py-2 font-medium",
+                      !isLast && "border-b border-border/70",
+                      needsScroll && "sticky left-0 z-10 bg-card"
+                    )}
+                  >
                     {label}
                   </th>
                   {row.values.map((v, i) => (
                     <td
                       key={`${label}-${periodHeaders[i] || i}`}
-                      className="tabular px-3 py-2 text-right whitespace-nowrap text-foreground/90"
+                      className={cn(
+                        "tabular px-3 py-2 text-right whitespace-nowrap text-foreground/90",
+                        !isLast && "border-b border-border/70"
+                      )}
                     >
                       {displayValue(v)}
                     </td>

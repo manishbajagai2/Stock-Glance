@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { AlertTriangle, ThumbsDown, ThumbsUp } from "lucide-react";
-import { LevelsStrip, ScenarioBars, ScoreRing } from "@/components/viz";
+import { DeskScoreHero } from "@/components/DeskScoreHero";
+import { LevelsStrip, ScenarioBars } from "@/components/viz";
 import type { DecisionPayload } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -99,16 +100,13 @@ export function ForecastPanel({ decision }: { decision: DecisionPayload }) {
 
   return (
     <div className="flex flex-col gap-7">
-      {/* Hero */}
-      <div className="enter-fade flex items-center gap-3 rounded-2xl border border-border bg-card/60 px-4 py-4 sm:gap-6 sm:px-6 sm:py-6">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Desk forecast · {decision.horizon === "swing" ? "Swing" : "Long-term"}
-          </p>
-          <p className="mt-1 text-3xl font-semibold tracking-tight tabular sm:text-4xl">
-            {fmtInr(f.deskForecast)}
-          </p>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+      <DeskScoreHero
+        eyebrow={`Desk forecast · ${decision.horizon === "swing" ? "Swing" : "Long-term"}`}
+        title={
+          <span className="tabular">{fmtInr(f.deskForecast)}</span>
+        }
+        subtitle={
+          <div className="flex flex-wrap items-center gap-2">
             <span
               className={cn(
                 "rounded-md px-2 py-0.5 text-xs font-semibold tabular",
@@ -129,22 +127,12 @@ export function ForecastPanel({ decision }: { decision: DecisionPayload }) {
               </span>
             ) : null}
           </div>
-        </div>
-        <ScoreRing
-          value={f.confidence}
-          label="Forecast"
-          size={96}
-          tone={f.confidence < 40 ? "danger" : "primary"}
-          className="shrink-0 sm:hidden"
-        />
-        <ScoreRing
-          value={f.confidence}
-          label="Forecast"
-          size={112}
-          tone={f.confidence < 40 ? "danger" : "primary"}
-          className="hidden shrink-0 sm:inline-flex"
-        />
-      </div>
+        }
+        score={f.confidence}
+        scoreLabel="Confidence"
+        scoreHint="How complete the forecast inputs look — not upside %"
+        scoreDetail="Built from data coverage (EPS, PE, growth, levels, peer PE) plus process confidence. Higher means the ₹ forecast is better supported — not a probability of gain."
+      />
 
       {/* Metric strip */}
       <section className="enter-fade-delay-1 grid grid-cols-2 gap-3 sm:grid-cols-5">

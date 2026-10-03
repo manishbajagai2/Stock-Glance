@@ -1,11 +1,20 @@
 import { CandlestickChart, Mountain } from "lucide-react";
+import type { FitLabel } from "@/lib/analysis/suitability";
 import type { Horizon } from "@/lib/analysis/levels";
 import { horizonSwitchLabel } from "@/lib/analysis/levels";
 import { cn } from "@/lib/utils";
 
+type HorizonFit = {
+  label: FitLabel;
+  score: number;
+  reasons?: string[];
+};
+
 type HorizonSwitchProps = {
   value: Horizon;
   onChange: (next: Horizon) => void;
+  longFit?: HorizonFit | null;
+  swingFit?: HorizonFit | null;
   className?: string;
 };
 
@@ -26,9 +35,25 @@ const OPTIONS: {
   },
 ];
 
+const LABEL_TONE_ACTIVE: Record<FitLabel, string> = {
+  Strong: "text-primary-foreground",
+  OK: "text-primary-foreground",
+  Weak: "text-primary-foreground/85",
+  Avoid: "text-primary-foreground",
+};
+
+const LABEL_TONE: Record<FitLabel, string> = {
+  Strong: "text-primary",
+  OK: "text-foreground",
+  Weak: "text-muted-foreground",
+  Avoid: "text-destructive",
+};
+
 export function HorizonSwitch({
   value,
   onChange,
+  longFit,
+  swingFit,
   className,
 }: HorizonSwitchProps) {
   return (
@@ -53,6 +78,8 @@ export function HorizonSwitch({
       >
         {OPTIONS.map(({ value: option, hint, Icon }) => {
           const active = value === option;
+          const fit = option === "long" ? longFit : swingFit;
+
           return (
             <button
               key={option}
@@ -74,14 +101,30 @@ export function HorizonSwitch({
                 )}
                 aria-hidden
               />
-              <span className="min-w-0 flex flex-col gap-0.5">
-                <span className="text-sm font-semibold tracking-tight">
-                  {horizonSwitchLabel(option)}
+              <span className="min-w-0 flex flex-1 flex-col gap-0.5">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold tracking-tight">
+                    {horizonSwitchLabel(option)}
+                  </span>
+                  {fit ? (
+                    <span
+                      className={cn(
+                        "text-xs font-semibold",
+                        active
+                          ? LABEL_TONE_ACTIVE[fit.label]
+                          : LABEL_TONE[fit.label]
+                      )}
+                    >
+                      {fit.label}
+                    </span>
+                  ) : null}
                 </span>
                 <span
                   className={cn(
                     "text-[0.7rem] leading-snug",
-                    active ? "text-primary-foreground/85" : "text-muted-foreground"
+                    active
+                      ? "text-primary-foreground/85"
+                      : "text-muted-foreground"
                   )}
                 >
                   {hint}

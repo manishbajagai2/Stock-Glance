@@ -63,82 +63,94 @@ export function VerdictPanel({ decision }: { decision: DecisionPayload }) {
 
   return (
     <div className="flex flex-col gap-7">
-      {/* 1. Action banner — score ring is the hero metric */}
+      {/* 1. Action banner — ring below text on mobile, beside on desktop */}
       <div
         className={cn(
-          "enter-fade flex items-center gap-3 rounded-2xl px-4 py-4 sm:gap-6 sm:px-6 sm:py-6",
+          "enter-fade flex flex-col items-stretch gap-4 rounded-2xl px-4 py-4 sm:flex-row sm:items-center sm:gap-6 sm:px-6 sm:py-6",
           ACTION_STYLES[v.action]
         )}
       >
-        <ActionGlyph action={v.action} />
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium tracking-wide uppercase opacity-80">
-            Verdict · {v.horizonLabel}
-            {v.provisional ? " · provisional" : ""}
-          </p>
-          <p className="text-2xl font-semibold tracking-tight sm:text-3xl">
-            {v.label}
-          </p>
-          <p className="mt-0.5 text-sm opacity-90">
-            Composite {v.composite}
-            <span className="opacity-80">/100</span>
-            {v.gateTriggered ? ` · gate: ${v.gateTriggered}` : ""}
+        <div className="flex min-w-0 flex-1 items-start gap-3">
+          <ActionGlyph action={v.action} />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium tracking-wide uppercase opacity-80">
+              Verdict · {v.horizonLabel}
+              {v.provisional ? " · provisional" : ""}
+            </p>
+            <p className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              {v.label}
+            </p>
+            <p className="mt-0.5 text-sm opacity-90">
+              Composite {v.composite}
+              <span className="opacity-80">/100</span>
+              {v.gateTriggered ? ` · gate: ${v.gateTriggered}` : ""}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col items-center gap-2 sm:shrink-0 sm:items-end">
+          <ScoreRing
+            value={v.composite}
+            label="Score"
+            size={112}
+            tone="onColor"
+            className="drop-shadow-sm"
+          />
+          <p className="max-w-[11rem] text-center text-[0.7rem] leading-snug opacity-80 sm:text-right">
+            Blended F/T/S/M score for this action — not a price target
           </p>
         </div>
-        <ScoreRing
-          value={v.composite}
-          label="Score"
-          size={96}
-          tone="onColor"
-          className="shrink-0 drop-shadow-sm sm:hidden"
-        />
-        <ScoreRing
-          value={v.composite}
-          label="Score"
-          size={112}
-          tone="onColor"
-          className="hidden shrink-0 drop-shadow-sm sm:inline-flex"
-        />
       </div>
 
       {/* 2. Confidence ring + F/T/S/M arcs */}
-      <div className="enter-fade-delay-1 grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
-        <div className="flex flex-col items-center gap-2">
-          <ScoreRing
-            value={v.confidence}
-            label="Confidence"
-            size={120}
-            tone={v.confidence < 40 ? "danger" : "primary"}
-          />
-          <p className="max-w-[14rem] text-center text-xs text-muted-foreground">
-            Based on {decision.process.scoredCount}/{decision.process.totalSteps}{" "}
-            scored steps · confidence out of 100
+      <section className="enter-fade-delay-1 flex flex-col gap-4 border-t border-border pt-6">
+        <div>
+          <h3 className="text-base font-semibold tracking-tight">
+            Confidence & pillars
+          </h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            How sure the desk is, and how Fundamentals · Technicals · Sentiment ·
+            Macro feed the composite
           </p>
         </div>
-        <ScoreArcRow
-          items={[
-            {
-              key: "F",
-              label: "Fundamentals",
-              score: v.scores.F,
-              weight: w.F,
-            },
-            {
-              key: "T",
-              label: "Technicals",
-              score: v.scores.T,
-              weight: w.T,
-            },
-            {
-              key: "S",
-              label: "Sentiment",
-              score: v.scores.S,
-              weight: w.S,
-            },
-            { key: "M", label: "Macro", score: v.scores.M, weight: w.M },
-          ]}
-        />
-      </div>
+        <div className="grid gap-5 sm:grid-cols-[auto_1fr] sm:items-center">
+          <div className="flex flex-col items-center gap-2">
+            <ScoreRing
+              value={v.confidence}
+              label="Confidence"
+              size={120}
+              tone={v.confidence < 40 ? "danger" : "primary"}
+            />
+            <p className="max-w-[14rem] text-center text-xs text-muted-foreground">
+              How sure the desk is · {decision.process.scoredCount}/
+              {decision.process.totalSteps} steps scored · not the composite
+              action score
+            </p>
+          </div>
+          <ScoreArcRow
+            items={[
+              {
+                key: "F",
+                label: "Fundamentals",
+                score: v.scores.F,
+                weight: w.F,
+              },
+              {
+                key: "T",
+                label: "Technicals",
+                score: v.scores.T,
+                weight: w.T,
+              },
+              {
+                key: "S",
+                label: "Sentiment",
+                score: v.scores.S,
+                weight: w.S,
+              },
+              { key: "M", label: "Macro", score: v.scores.M, weight: w.M },
+            ]}
+          />
+        </div>
+      </section>
 
       {decision.suitability.comboNote ? (
         <p className="enter-fade-delay-2 text-sm font-medium text-foreground/90">

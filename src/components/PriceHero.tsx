@@ -9,7 +9,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { FitMeter } from "@/components/viz";
 import type { Horizon } from "@/lib/analysis/levels";
 import { displayValue, type DecisionPayload } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -73,7 +72,46 @@ export function PriceHero({
   const statusText = persistHint(persistStatus, Boolean(provisional));
 
   return (
-    <header className="enter-fade flex flex-col gap-4 border-b border-border pb-4">
+    <header className="enter-fade flex flex-col gap-4">
+      <div className="flex items-center justify-end gap-1.5">
+        <p className="text-right text-[0.7rem] leading-snug text-muted-foreground sm:text-xs">
+          Live · {when}
+          {" · "}
+          <span
+            className={cn(
+              persistStatus === "failed" && "text-destructive",
+              persistStatus === "saved" && "text-foreground/80"
+            )}
+          >
+            {statusText}
+          </span>
+        </p>
+        {onRefresh ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  className="size-7 shrink-0"
+                  disabled={refreshing}
+                  onClick={onRefresh}
+                  aria-label={refreshing ? "Refreshing" : "Refresh quote"}
+                >
+                  <RefreshCw
+                    className={cn("size-3.5", refreshing && "animate-spin")}
+                  />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {refreshing ? "Refreshing…" : "Refresh"}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null}
+      </div>
+
       <div className="flex items-start justify-between gap-4 sm:gap-6">
         <div className="flex min-w-0 items-start gap-3">
           <Avatar
@@ -118,73 +156,21 @@ export function PriceHero({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          <div className="flex items-center gap-1.5">
-            <p className="text-right text-[0.7rem] leading-snug text-muted-foreground sm:text-xs">
-              Live · {when}
-              {" · "}
-              <span
-                className={cn(
-                  persistStatus === "failed" && "text-destructive",
-                  persistStatus === "saved" && "text-foreground/80"
-                )}
-              >
-                {statusText}
-              </span>
-            </p>
-            {onRefresh ? (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      className="size-7 shrink-0"
-                      disabled={refreshing}
-                      onClick={onRefresh}
-                      aria-label={refreshing ? "Refreshing" : "Refresh quote"}
-                    >
-                      <RefreshCw
-                        className={cn("size-3.5", refreshing && "animate-spin")}
-                      />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {refreshing ? "Refreshing…" : "Refresh"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            ) : null}
-          </div>
-          <p className="tabular text-2xl font-semibold tracking-tight text-primary sm:text-3xl">
-            {displayValue(price)}
-          </p>
-        </div>
+        <p className="tabular hidden shrink-0 text-3xl font-semibold tracking-tight text-primary sm:block">
+          {displayValue(price)}
+        </p>
       </div>
 
-      <HorizonSwitch value={horizon} onChange={onHorizonChange} />
+      <p className="tabular text-right text-2xl font-semibold tracking-tight text-primary sm:hidden">
+        {displayValue(price)}
+      </p>
 
-      {suitability ? (
-        <div className="flex flex-col gap-2 sm:max-w-xl sm:flex-row">
-          <FitMeter
-            kind="long"
-            label={suitability.longTerm.label}
-            score={suitability.longTerm.score}
-            reasons={suitability.longTerm.reasons}
-            active={horizon === "long"}
-            onSelect={() => onHorizonChange("long")}
-          />
-          <FitMeter
-            kind="swing"
-            label={suitability.swing.label}
-            score={suitability.swing.score}
-            reasons={suitability.swing.reasons}
-            active={horizon === "swing"}
-            onSelect={() => onHorizonChange("swing")}
-          />
-        </div>
-      ) : null}
+      <HorizonSwitch
+        value={horizon}
+        onChange={onHorizonChange}
+        longFit={suitability?.longTerm}
+        swingFit={suitability?.swing}
+      />
     </header>
   );
 }

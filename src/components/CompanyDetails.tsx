@@ -4,7 +4,6 @@ import { AppFooter } from "@/components/AppFooter";
 import { AppHeader } from "@/components/AppHeader";
 import { PriceHero, type PersistStatus } from "@/components/PriceHero";
 import { ScrollableTabs } from "@/components/ScrollableTabs";
-import { useScrollChromeVisible } from "@/hooks/useScrollDirection";
 import { ForecastPanel } from "@/components/decision/ForecastPanel";
 import { FundamentalsPanel } from "@/components/decision/FundamentalsPanel";
 import { HoldingPanel } from "@/components/decision/HoldingPanel";
@@ -217,10 +216,13 @@ export function CompanyDetails({
     return () => window.clearTimeout(timer);
   }, [data, decision, enriching, companyPath]);
 
+  const contentScrollRef = useRef<HTMLDivElement>(null);
+
   function onTabChange(next: string) {
     const t = next as DeskTab;
     setTab(t);
     replaceDeskQuery({ tab: t, horizon });
+    contentScrollRef.current?.scrollTo({ top: 0 });
   }
 
   function onHorizonChange(next: Horizon) {
@@ -228,13 +230,13 @@ export function CompanyDetails({
     replaceDeskQuery({ tab, horizon: next });
   }
 
-  const tabsVisible = useScrollChromeVisible();
   const showDeskTabs = Boolean(!error && data);
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background">
       <AppHeader
         brand={false}
+        className="static shrink-0 bg-background"
         onHoldingsClick={onHoldings}
         leading={
           <Button
@@ -252,22 +254,13 @@ export function CompanyDetails({
       />
 
       {showDeskTabs ? (
-        <div
-          className={cn(
-            "sticky top-[3.25rem] z-10 overflow-hidden border-border/60 bg-background/90 backdrop-blur-md transition-[max-height,opacity,border-color] duration-200 ease-out sm:top-[3.5rem]",
-            tabsVisible
-              ? "max-h-16 border-b opacity-100"
-              : "pointer-events-none max-h-0 border-b-0 opacity-0"
-          )}
-          aria-hidden={!tabsVisible}
-        >
+        <div className="shrink-0 border-b border-border/60 bg-background">
           <div className="mx-auto max-w-5xl">
             <ScrollableTabs aria-label="Desk sections">
               {deskTabs.map(([value, label]) => (
                 <button
                   key={value}
                   type="button"
-                  tabIndex={tabsVisible ? 0 : -1}
                   onClick={() => onTabChange(value)}
                   className={cn(
                     "shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold tracking-tight transition-colors sm:text-sm",
@@ -284,75 +277,80 @@ export function CompanyDetails({
         </div>
       ) : null}
 
-      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-6 px-4 py-5 sm:px-6 sm:py-8">
-        {loading && !data ? <DetailsSkeleton name={loadingName} /> : null}
+      <div
+        ref={contentScrollRef}
+        className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+      >
+        <main className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-4 py-5 sm:px-6 sm:py-8">
+          {loading && !data ? <DetailsSkeleton name={loadingName} /> : null}
 
-        {error && !data ? (
-          <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
-            <p className="text-lg text-destructive">{error}</p>
-            <Button type="button" size="lg" className="min-h-11" onClick={onBack}>
-              Back to search
-            </Button>
-          </div>
-        ) : null}
+          {error && !data ? (
+            <div className="mx-auto flex max-w-md flex-col items-center gap-4 py-16 text-center">
+              <p className="text-lg text-destructive">{error}</p>
+              <Button type="button" size="lg" className="min-h-11" onClick={onBack}>
+                Back to search
+              </Button>
+            </div>
+          ) : null}
 
-        {!error && data && decision ? (
-          <>
-            <PriceHero
-              company={data.company || data.symbol || "Company"}
-              symbol={data.symbol || ""}
-              logoUrl={data.logoUrl}
-              price={headerPrice}
-              fetchedAt={data.fetchedAt}
-              horizon={horizon}
-              onHorizonChange={onHorizonChange}
-              suitability={decision.suitability}
-              inPortfolio={showPositionTab}
-              provisional={enriching || decision.verdict.provisional}
-              persistStatus={persistStatus}
-              refreshing={refreshing || loading}
-              onRefresh={onRefresh}
-            />
+          {!error && data && decision ? (
+            <>
+              <PriceHero
+                company={data.company || data.symbol || "Company"}
+                symbol={data.symbol || ""}
+                logoUrl={data.logoUrl}
+                price={headerPrice}
+                fetchedAt={data.fetchedAt}
+                horizon={horizon}
+                onHorizonChange={onHorizonChange}
+                suitability={decision.suitability}
+                inPortfolio={showPositionTab}
+                provisional={enriching || decision.verdict.provisional}
+                persistStatus={persistStatus}
+                refreshing={refreshing || loading}
+                onRefresh={onRefresh}
+              />
 
-            <Tabs value={tab} onValueChange={onTabChange} className="w-full gap-5">
-              <TabsContent value="verdict" className="outline-none">
-                <VerdictPanel decision={decision} />
-              </TabsContent>
-              <TabsContent value="forecast" className="outline-none">
-                <ForecastPanel decision={decision} />
-              </TabsContent>
-              <TabsContent value="process" className="outline-none">
-                <ProcessPanel decision={decision} />
-              </TabsContent>
-              <TabsContent value="fundamentals" className="outline-none">
-                <FundamentalsPanel decision={decision} data={data} />
-              </TabsContent>
-              <TabsContent value="technicals" className="outline-none">
-                <TechnicalsPanel decision={decision} bars={bars} />
-              </TabsContent>
-              <TabsContent value="news" className="outline-none">
-                <NewsPanel decision={decision} />
-              </TabsContent>
-              <TabsContent value="macro" className="outline-none">
-                <MacroPanel decision={decision} />
-              </TabsContent>
-              {holding ? (
-                <TabsContent value="position" className="outline-none">
-                  <HoldingPanel
-                    holding={holding}
-                    decision={decision}
-                    onManage={onHoldings}
-                  />
+              <Tabs value={tab} onValueChange={onTabChange} className="w-full gap-5">
+                <TabsContent value="verdict" className="outline-none">
+                  <VerdictPanel decision={decision} />
                 </TabsContent>
-              ) : null}
-            </Tabs>
+                <TabsContent value="forecast" className="outline-none">
+                  <ForecastPanel decision={decision} />
+                </TabsContent>
+                <TabsContent value="process" className="outline-none">
+                  <ProcessPanel decision={decision} />
+                </TabsContent>
+                <TabsContent value="fundamentals" className="outline-none">
+                  <FundamentalsPanel decision={decision} data={data} />
+                </TabsContent>
+                <TabsContent value="technicals" className="outline-none">
+                  <TechnicalsPanel decision={decision} bars={bars} />
+                </TabsContent>
+                <TabsContent value="news" className="outline-none">
+                  <NewsPanel decision={decision} />
+                </TabsContent>
+                <TabsContent value="macro" className="outline-none">
+                  <MacroPanel decision={decision} />
+                </TabsContent>
+                {holding ? (
+                  <TabsContent value="position" className="outline-none">
+                    <HoldingPanel
+                      holding={holding}
+                      decision={decision}
+                      onManage={onHoldings}
+                    />
+                  </TabsContent>
+                ) : null}
+              </Tabs>
 
-            <SourcesDrawer data={data} />
-          </>
-        ) : null}
-      </main>
+              <SourcesDrawer data={data} />
+            </>
+          ) : null}
+        </main>
 
-      <AppFooter onBrandClick={onBack} />
+        <AppFooter onBrandClick={onBack} />
+      </div>
     </div>
   );
 }

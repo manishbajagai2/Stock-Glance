@@ -1,33 +1,22 @@
 import type { DecisionPayload } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { DeskScoreHero } from "@/components/DeskScoreHero";
 
 export function MacroPanel({ decision }: { decision: DecisionPayload }) {
   const m = decision.macro;
   const markers = m.markers;
+  const score = Math.round(m.score);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold tracking-tight">Macro thesis</h3>
-          <p className="text-sm text-muted-foreground">
-            Lightweight India desk mapped to {decision.sector.sectorLabel}
-          </p>
-        </div>
-        <div className="text-right">
-          <p
-            className={cn(
-              "text-sm font-semibold capitalize",
-              m.stance === "supportive" && "text-primary",
-              m.stance === "headwind" && "text-destructive",
-              m.stance === "neutral" && "text-muted-foreground"
-            )}
-          >
-            {m.stance}
-          </p>
-          <p className="tabular text-2xl font-semibold">{Math.round(m.score)}</p>
-        </div>
-      </div>
+      <DeskScoreHero
+        eyebrow="Macro thesis"
+        title={<span className="capitalize">{m.stance}</span>}
+        subtitle={`Lightweight India desk mapped to ${decision.sector.sectorLabel}`}
+        score={score}
+        scoreLabel="Macro"
+        scoreHint="Sector vs India macro backdrop — context only"
+        scoreDetail="Maps rates, FX, oil, and market proxies onto this sector. Higher means the macro map is more supportive; not a company valuation."
+      />
 
       <div className="grid gap-2 sm:grid-cols-4">
         <Marker label="India 10Y" value={fmt(markers.india10y, "%")} />

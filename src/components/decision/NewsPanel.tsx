@@ -1,20 +1,28 @@
 import type { DecisionPayload } from "@/lib/api";
+import { DeskScoreHero } from "@/components/DeskScoreHero";
 import { cn } from "@/lib/utils";
+
+function sentimentLabel(score: number): string {
+  if (score >= 60) return "Constructive";
+  if (score >= 45) return "Mixed";
+  return "Cautious";
+}
 
 export function NewsPanel({ decision }: { decision: DecisionPayload }) {
   const s = decision.sentiment;
+  const score = Math.round(s.score);
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h3 className="text-base font-semibold tracking-tight">News & sentiment</h3>
-          <p className="text-sm text-muted-foreground">
-            Polarity with time decay · analyst skew blended when available
-          </p>
-        </div>
-        <p className="tabular text-2xl font-semibold text-primary">{Math.round(s.score)}</p>
-      </div>
+      <DeskScoreHero
+        eyebrow="News & sentiment"
+        title={sentimentLabel(score)}
+        subtitle="Polarity with time decay · analyst skew blended when available"
+        score={score}
+        scoreLabel="Sentiment"
+        scoreHint="News tone after time decay — not a price target"
+        scoreDetail="Headline polarity with older news weighted less, blended with analyst skew when available. Higher is more constructive tone."
+      />
 
       {s.redFlags.length ? (
         <ul className="rounded-xl border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">

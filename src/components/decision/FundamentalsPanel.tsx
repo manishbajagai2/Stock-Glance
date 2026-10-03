@@ -1,7 +1,46 @@
+import { CircleHelp } from "lucide-react";
 import type { DecisionPayload, CompanyData } from "@/lib/api";
 import { FinancialTable } from "@/components/FinancialTable";
 import { KeyOverview } from "@/components/KeyOverview";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { DeskScoreHero } from "@/components/DeskScoreHero";
 import { cn } from "@/lib/utils";
+
+const FUND_PILLARS = [
+  {
+    key: "quality",
+    label: "Quality",
+    hint: "Returns & coverage",
+    detail:
+      "From ROE and ROCE, tempered by sector fit and interest coverage when available. Stronger returns and coverage → higher score.",
+  },
+  {
+    key: "growth",
+    label: "Growth",
+    hint: "Sales & profit trend",
+    detail:
+      "From sales and profit growth (Finology 1Y/3Y when present, else Screener YoY). Faster growth lifts the score; contraction pulls it down.",
+  },
+  {
+    key: "balanceSheet",
+    label: "Balance sheet",
+    hint: "Cash & leverage",
+    detail:
+      "From operating cash flow, CFO/PAT, and debt/equity (or debt vs reserves). Positive cash conversion and lower leverage score better.",
+  },
+  {
+    key: "valuation",
+    label: "Valuation",
+    hint: "Cheap vs rich",
+    detail:
+      "Peer percentile when available; otherwise a P/E band. Lower score means the stock looks expensive vs peers or its multiple.",
+  },
+] as const;
 
 export function FundamentalsPanel({
   decision,
@@ -19,26 +58,73 @@ export function FundamentalsPanel({
   const shareholding =
     tables.shareholding || data.finology?.shareholding || null;
 
+  const values: Record<(typeof FUND_PILLARS)[number]["key"], number> = {
+    quality: Math.round(f.quality),
+    growth: Math.round(f.growth),
+    balanceSheet: Math.round(f.balanceSheet),
+    valuation: Math.round(f.valuation),
+  };
+  const consolidated = Math.round(f.score);
+
   return (
     <div className="flex flex-col gap-8">
-      <div className="grid gap-2 grid-cols-2 sm:grid-cols-5">
-        {[
-          ["Score", Math.round(f.score)],
-          ["Quality", Math.round(f.quality)],
-          ["Growth", Math.round(f.growth)],
-          ["Balance sheet", Math.round(f.balanceSheet)],
-          ["Valuation", Math.round(f.valuation)],
-        ].map(([label, val]) => (
-          <div
-            key={String(label)}
-            className="rounded-xl border border-border bg-card/60 px-3 py-3"
-          >
-            <p className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
-              {label}
-            </p>
-            <p className="tabular mt-1 text-xl font-semibold">{val}</p>
+      <DeskScoreHero
+        eyebrow="Fundamentals"
+        title={
+          <span className="tabular">
+            {consolidated}
+            <span className="text-lg font-normal text-muted-foreground">
+              /100
+            </span>
+          </span>
+        }
+        subtitle="Quality 30% · Growth 25% · Balance sheet 20% · Valuation 25%"
+        score={consolidated}
+        scoreLabel="Score"
+        scoreHint="Overall fundamentals strength from four pillars"
+        scoreDetail="Weighted blend: Quality 30% · Growth 25% · Balance sheet 20% · Valuation 25%. Higher is healthier on our 0–100 desk scale."
+      />
+
+      <div>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Pillar breakdown · hover a tile for how it’s built
+        </p>
+        <TooltipProvider delayDuration={200}>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {FUND_PILLARS.map((m) => (
+              <Tooltip key={m.key}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="rounded-xl border border-border bg-card/60 px-3 py-3 text-left outline-none transition-colors hover:border-foreground/20 hover:bg-card focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
+                    <span className="flex items-center justify-between gap-1">
+                      <span className="text-[0.7rem] font-medium tracking-wide text-muted-foreground uppercase">
+                        {m.label}
+                      </span>
+                      <CircleHelp
+                        className="size-3 shrink-0 text-muted-foreground/70"
+                        aria-hidden
+                      />
+                    </span>
+                    <span className="tabular mt-1 block text-xl font-semibold">
+                      {values[m.key]}
+                      <span className="text-sm font-normal text-muted-foreground">
+                        /100
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-[0.65rem] leading-snug text-muted-foreground">
+                      {m.hint}
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-[16rem]">
+                  {m.detail}
+                </TooltipContent>
+              </Tooltip>
+            ))}
           </div>
-        ))}
+        </TooltipProvider>
       </div>
 
       <div>
