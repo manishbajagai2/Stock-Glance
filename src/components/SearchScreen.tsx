@@ -203,94 +203,96 @@ export function SearchScreen({ onPick, onHoldings, onHome }: SearchScreenProps) 
             </p>
           </div>
 
-          <div className="enter-fade-delay-1 relative">
-            <label htmlFor="landing-search" className="sr-only">
-              Company or ticker
-            </label>
-            <Search
-              aria-hidden
-              className="pointer-events-none absolute top-1/2 left-4 z-[1] size-5 -translate-y-1/2 text-muted-foreground sm:left-5"
-            />
-            <Input
-              id="landing-search"
-              ref={inputRef}
-              type="search"
-              name="q"
-              value={query}
-              maxLength={MAX_QUERY_LEN}
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="Search company or ticker…"
-              aria-autocomplete="list"
-              aria-expanded={showDropdown}
-              aria-controls="search-results"
-              className={cn(
-                "h-14 rounded-2xl border-border/90 bg-card/90 pr-5 pl-11 text-base shadow-[0_10px_40px_-24px_rgba(0,0,0,0.55)] backdrop-blur-sm",
-                "sm:h-16 sm:rounded-[1.25rem] sm:pl-12 sm:text-lg",
-                "transition-[box-shadow,border-color] duration-300 focus-visible:border-primary/50 focus-visible:shadow-[0_16px_48px_-28px_color-mix(in_oklab,var(--primary)_70%,transparent)]"
-              )}
-              onChange={(e) => {
-                const clamped = clampQuery(e.target.value);
-                setQuery(clamped);
-                setFeedback(null);
+          <div className="enter-fade-delay-1">
+            <div className="relative">
+              <label htmlFor="landing-search" className="sr-only">
+                Company or ticker
+              </label>
+              <Search
+                aria-hidden
+                className="pointer-events-none absolute top-1/2 left-4 z-[1] size-5 -translate-y-1/2 text-muted-foreground sm:left-5"
+              />
+              <Input
+                id="landing-search"
+                ref={inputRef}
+                type="search"
+                name="q"
+                value={query}
+                maxLength={MAX_QUERY_LEN}
+                autoComplete="off"
+                spellCheck={false}
+                placeholder="Search company or ticker…"
+                aria-autocomplete="list"
+                aria-expanded={showDropdown}
+                aria-controls="search-results"
+                className={cn(
+                  "h-14 rounded-2xl border-border/90 bg-card/90 pr-5 pl-11 text-base shadow-[0_10px_40px_-24px_rgba(0,0,0,0.55)] backdrop-blur-sm",
+                  "sm:h-16 sm:rounded-[1.25rem] sm:pl-12 sm:text-lg",
+                  "transition-[box-shadow,border-color] duration-300 focus-visible:border-primary/50 focus-visible:shadow-[0_16px_48px_-28px_color-mix(in_oklab,var(--primary)_70%,transparent)]"
+                )}
+                onChange={(e) => {
+                  const clamped = clampQuery(e.target.value);
+                  setQuery(clamped);
+                  setFeedback(null);
 
-                if (debounceRef.current) {
-                  clearTimeout(debounceRef.current);
-                  debounceRef.current = null;
-                }
+                  if (debounceRef.current) {
+                    clearTimeout(debounceRef.current);
+                    debounceRef.current = null;
+                  }
 
-                if (clamped.trim().length < MIN_QUERY_LEN) {
-                  abortRef.current?.abort();
-                  lastQuerySent.current = "";
-                  setResults([]);
-                  setActiveIndex(-1);
-                  setHasSearched(false);
-                  setSearching(false);
-                  return;
-                }
+                  if (clamped.trim().length < MIN_QUERY_LEN) {
+                    abortRef.current?.abort();
+                    lastQuerySent.current = "";
+                    setResults([]);
+                    setActiveIndex(-1);
+                    setHasSearched(false);
+                    setSearching(false);
+                    return;
+                  }
 
-                debounceRef.current = setTimeout(() => {
-                  debounceRef.current = null;
-                  void runSearch(clamped);
-                }, DEBOUNCE_MS);
-              }}
-              onPaste={(e) => {
-                e.preventDefault();
-                const pasted = clampQuery(e.clipboardData.getData("text"));
-                const el = e.currentTarget;
-                const start = el.selectionStart ?? query.length;
-                const end = el.selectionEnd ?? query.length;
-                const next = clampQuery(
-                  query.slice(0, start) + pasted + query.slice(end)
-                );
-                setQuery(next);
-                if (debounceRef.current) clearTimeout(debounceRef.current);
-                debounceRef.current = setTimeout(() => {
-                  debounceRef.current = null;
-                  void runSearch(next);
-                }, DEBOUNCE_MS);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
+                  debounceRef.current = setTimeout(() => {
+                    debounceRef.current = null;
+                    void runSearch(clamped);
+                  }, DEBOUNCE_MS);
+                }}
+                onPaste={(e) => {
                   e.preventDefault();
-                  onEnter();
-                  return;
-                }
-                if (!results.length) return;
-                if (e.key === "ArrowDown") {
-                  e.preventDefault();
-                  setActiveIndex((i) => (i + 1) % results.length);
-                } else if (e.key === "ArrowUp") {
-                  e.preventDefault();
-                  setActiveIndex(
-                    (i) => (i - 1 + results.length) % results.length
+                  const pasted = clampQuery(e.clipboardData.getData("text"));
+                  const el = e.currentTarget;
+                  const start = el.selectionStart ?? query.length;
+                  const end = el.selectionEnd ?? query.length;
+                  const next = clampQuery(
+                    query.slice(0, start) + pasted + query.slice(end)
                   );
-                } else if (e.key === "Escape") {
-                  setResults([]);
-                  setHasSearched(false);
-                }
-              }}
-            />
+                  setQuery(next);
+                  if (debounceRef.current) clearTimeout(debounceRef.current);
+                  debounceRef.current = setTimeout(() => {
+                    debounceRef.current = null;
+                    void runSearch(next);
+                  }, DEBOUNCE_MS);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    onEnter();
+                    return;
+                  }
+                  if (!results.length) return;
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setActiveIndex((i) => (i + 1) % results.length);
+                  } else if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setActiveIndex(
+                      (i) => (i - 1 + results.length) % results.length
+                    );
+                  } else if (e.key === "Escape") {
+                    setResults([]);
+                    setHasSearched(false);
+                  }
+                }}
+              />
+            </div>
 
             {/* In-flow panel (not absolute) so results expand main and keep the footer below */}
             {showDropdown ? (
